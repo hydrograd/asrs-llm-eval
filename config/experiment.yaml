@@ -2,9 +2,12 @@
 seed: 42
 
 data:
-  raw_path: data/raw/asrs_export.csv
+  raw_dir: data/raw              # every *.csv export here is merged, de-duplicated on ACN
+  start: "2022-01"               # drops stray out-of-window reports the export includes
+  end: "2026-01"
   target: primary_problem        # single-label target
   min_class_count: 30            # rarer classes folded into "Other"
+  test_size: 0.2                 # LLM items are drawn only from the test pool
 
 # Fill in with documented cutoffs + source links before running the memorisation split.
 models:

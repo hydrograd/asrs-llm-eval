@@ -1,0 +1,35 @@
+# Every headline number must be reproducible from this file.
+seed: 42
+
+data:
+  raw_path: data/raw/asrs_export.csv
+  target: primary_problem        # single-label target
+  min_class_count: 30            # rarer classes folded into "Other"
+
+# Fill in with documented cutoffs + source links before running the memorisation split.
+models:
+  - name: TODO-groq-model
+    provider: groq
+    training_cutoff: null        # YYYY-MM-DD
+    cutoff_source: null
+  - name: TODO-gemini-model
+    provider: gemini
+    training_cutoff: null
+    cutoff_source: null
+  - name: TODO-third-model
+    provider: groq
+    training_cutoff: null
+    cutoff_source: null
+
+sampling:
+  n_eval: 300                    # per split; sized to free-tier token budgets
+  n_stability_items: 30
+  n_stability_runs: 10
+  temperature: 0.0
+
+retrieval:
+  k_examples: 5
+
+bootstrap:
+  n_resamples: 2000
+  ci: 0.95

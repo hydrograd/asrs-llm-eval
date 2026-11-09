@@ -8,9 +8,9 @@ import json
 from pathlib import Path
 
 import yaml
-from sklearn.metrics import accuracy_score, cohen_kappa_score, f1_score
+import numpy as np
 
-from asrs_eval import baselines, data
+from asrs_eval import baselines, data, metrics as M
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -29,14 +29,26 @@ def main():
     out = {}
     for name, model in baselines.all_baselines(cfg["seed"]).items():
         model.fit(train["narrative"], train["label"])
-        pred = model.predict(test["narrative"])
+        y = test["label"].to_numpy()
+        proba = model.predict_proba(test["narrative"])
+        classes = np.asarray(model.classes_)
+        pred = classes[proba.argmax(axis=1)]
+        conf = proba.max(axis=1)
+        correct = (pred == y).astype(float)
+        b = cfg["bootstrap"]
+        lo, hi = M.bootstrap_ci(correct, np.mean, b["n_resamples"], b["ci"], cfg["seed"])
+        ece, _ = M.ece(conf, correct)
         out[name] = {
-            "accuracy": accuracy_score(test["label"], pred),
-            "macro_f1": f1_score(test["label"], pred, average="macro", zero_division=0),
-            "cohen_kappa": cohen_kappa_score(test["label"], pred),
+            "accuracy": M.accuracy(y, pred),
+            "accuracy_ci": [lo, hi],
+            "macro_f1": M.macro_f1(y, pred),
+            "cohen_kappa": M.cohen_kappa(y, pred),
+            "brier_top_label": M.brier_top_label(conf, correct),
+            "ece": ece,
             "n_test": len(test),
         }
-        print(f"{name:14s} " + "  ".join(f"{k}={v:.3f}" for k, v in out[name].items() if k != "n_test"))
+        print(f"{name:14s} " + "  ".join(f"{k}={v:.3f}" for k, v in out[name].items() if isinstance(v, float))
+              + "  acc95=[{:.3f}, {:.3f}]".format(*out[name]["accuracy_ci"]))
 
     (ROOT / "results").mkdir(exist_ok=True)
     (ROOT / "results/baselines.json").write_text(json.dumps(out, indent=2))

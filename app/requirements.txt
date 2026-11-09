@@ -1,0 +1,4 @@
+# Streamlit Community Cloud installs this (it looks next to the entrypoint first).
+# The dashboard only reads results/results.json and results/charts/*.png.
+streamlit>=1.35
+pandas>=2.1

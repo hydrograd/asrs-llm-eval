@@ -85,6 +85,16 @@ def train_test(df: pd.DataFrame, test_size: float, seed: int) -> tuple[pd.DataFr
     return train.reset_index(drop=True), test.reset_index(drop=True)
 
 
+PROCESSED_COLUMNS = ["acn", "date", "split", "primary_problem", "label", "synopsis", "narrative"]
+
+
+def load_processed(path: str | Path) -> pd.DataFrame:
+    """Read the frozen dataset written by scripts/build_dataset.py."""
+    df = pd.read_csv(path, dtype={"acn": int, "date": str}, keep_default_na=False)
+    df["date"] = pd.to_datetime(df["date"], format="%Y-%m")
+    return df
+
+
 def cutoff_split(df: pd.DataFrame, cutoff: str) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Split into reports whose incident month ends before the cutoff, and those after it.
 

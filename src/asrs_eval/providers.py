@@ -35,7 +35,9 @@ class Reply:
 
 
 class ProviderError(RuntimeError):
-    pass
+    def __init__(self, msg: str, attempts: int = 1):
+        super().__init__(msg)
+        self.attempts = attempts  # HTTP requests made, all of which count against quotas
 
 
 class Provider:
@@ -69,7 +71,7 @@ class Provider:
                     return self._parse(r.json(), latency, attempt)
                 err = f"HTTP {r.status_code}: {r.text[:300]}"
                 if r.status_code not in RETRY_STATUS:
-                    raise ProviderError(err)
+                    raise ProviderError(err, attempt)
                 ra = r.headers.get("retry-after")
                 if ra:
                     try:
@@ -79,7 +81,8 @@ class Provider:
             if attempt < self.max_attempts:
                 time.sleep(min(delay, 120))
                 delay *= 2
-        raise ProviderError(f"gave up after {self.max_attempts} attempts; last: {err}")
+        raise ProviderError(f"gave up after {self.max_attempts} attempts; last: {err}",
+                            self.max_attempts)
 
     def _parse(self, j: dict, latency: float, attempts: int) -> Reply:
         choice = j["choices"][0]["message"]
@@ -99,4 +102,6 @@ class Provider:
 
 
 def from_config(model_cfg: dict, **kw) -> Provider:
+    if "max_attempts" in model_cfg:
+        kw.setdefault("max_attempts", model_cfg["max_attempts"])
     return Provider(model_cfg["provider"], model_cfg["name"], model_cfg.get("extra"), **kw)

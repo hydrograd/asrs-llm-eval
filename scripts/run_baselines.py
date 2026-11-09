@@ -18,9 +18,8 @@ ROOT = Path(__file__).resolve().parents[1]
 def main():
     cfg = yaml.safe_load((ROOT / "config/experiment.yaml").read_text())
     d = cfg["data"]
-    df = data.load_reports(ROOT / d["raw_dir"], start=d.get("start"), end=d.get("end"))
-    df = data.add_label(df, d["min_class_count"])
-    train, test = data.train_test(df, d["test_size"], cfg["seed"])
+    df = data.load_processed(ROOT / d["processed_path"])
+    train, test = df[df.split == "train"], df[df.split == "test"]
 
     print(f"{len(df)} reports {df.date.min():%Y-%m}..{df.date.max():%Y-%m}; "
           f"train {len(train)}, test {len(test)}, {df.label.nunique()} classes")

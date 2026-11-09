@@ -12,6 +12,7 @@ from dataclasses import asdict, dataclass
 
 import pandas as pd
 
+from . import probes
 from .providers import Provider, ProviderError
 from .retrieve import Retriever
 from .schema import PRIMARY_PROBLEMS, validate
@@ -55,10 +56,12 @@ class Result:
     acn: int
     model: str
     condition: str
+    probe: str | None
     prediction: str | None       # None = refusal (schema failed twice) or provider error
     confidence: float | None
     reason: str | None
     schema_failures: int         # 0, 1 or 2
+    requests: int                # HTTP requests made, incl. provider-level retries
     status: str                  # ok | ok_after_retry | refusal | provider_error
     error: str | None
     prompt_hash: str
@@ -80,29 +83,33 @@ class Result:
 def classify(acn: int, narrative: str, provider: Provider, *, condition: str = "base",
              retriever: Retriever | None = None, k: int = 5, max_words: int | None = 500,
              temperature: float = 0.0, max_tokens: int = 1024,
-             labels: list[str] = PRIMARY_PROBLEMS) -> Result:
+             probe: str | None = None) -> Result:
     text, truncated = truncate_words(narrative, max_words)
+    text, labels = probes.apply(probe, text)       # after truncation, so padding is never cut
     examples = retriever.top_k(narrative, k) if retriever is not None else None
     messages = build_messages(text, examples, labels)
     prompt_hash = hashlib.sha256(json.dumps(messages).encode()).hexdigest()[:16]
 
-    tok = {"prompt_tokens": 0, "completion_tokens": 0, "reasoning_tokens": 0, "latency_s": 0.0}
+    tok = {"prompt_tokens": 0, "completion_tokens": 0, "reasoning_tokens": 0, "latency_s": 0.0,
+           "requests": 0}
     raws, failures, err = [], 0, None
     model_id = fp = None
     for attempt in range(2):
         try:
             rep = provider.complete(messages, temperature=temperature, max_tokens=max_tokens)
         except ProviderError as e:
-            return _result(acn, provider, condition, None, None, None, failures, "provider_error",
+            tok["requests"] += e.attempts
+            return _result(acn, provider, condition, probe, None, None, None, failures, "provider_error",
                            str(e), prompt_hash, examples, truncated, tok, model_id, fp, raws)
-        for kname in tok:
+        for kname in ("prompt_tokens", "completion_tokens", "reasoning_tokens", "latency_s"):
             tok[kname] += getattr(rep, kname)
+        tok["requests"] += rep.attempts
         model_id, fp = rep.model, rep.fingerprint
         raws.append(rep.text)
         parsed, err = validate(rep.text)
         if parsed:
             status = "ok" if attempt == 0 else "ok_after_retry"
-            return _result(acn, provider, condition, parsed.primary_problem, parsed.confidence,
+            return _result(acn, provider, condition, probe, parsed.primary_problem, parsed.confidence,
                            parsed.reason, failures, status, None, prompt_hash, examples,
                            truncated, tok, model_id, fp, raws)
         failures += 1
@@ -110,14 +117,14 @@ def classify(acn: int, narrative: str, provider: Provider, *, condition: str = "
             {"role": "assistant", "content": rep.text},
             {"role": "user", "content": f"That reply was rejected: {err}. "
                                         "Reply again with only the JSON object."}]
-    return _result(acn, provider, condition, None, None, None, failures, "refusal", err,
+    return _result(acn, provider, condition, probe, None, None, None, failures, "refusal", err,
                    prompt_hash, examples, truncated, tok, model_id, fp, raws)
 
 
-def _result(acn, provider, condition, pred, conf, reason, failures, status, error, prompt_hash,
+def _result(acn, provider, condition, probe, pred, conf, reason, failures, status, error, prompt_hash,
             examples, truncated, tok, model_id, fp, raws) -> Result:
     return Result(
-        acn=int(acn), model=provider.model, condition=condition, prediction=pred,
+        acn=int(acn), model=provider.model, condition=condition, probe=probe, prediction=pred,
         confidence=conf, reason=reason, schema_failures=failures, status=status, error=error,
         prompt_hash=prompt_hash,
         retrieved_acns=[] if examples is None else [int(a) for a in examples["acn"]],

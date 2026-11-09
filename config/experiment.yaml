@@ -1,8 +1,10 @@
 # Every headline number must be reproducible from this file.
 seed: 42
+temperature: 0.0
 
 data:
   raw_dir: data/raw              # every *.csv export here is merged, de-duplicated on ACN
+  processed_path: data/processed/asrs_reports.csv.gz   # frozen, committed; built by scripts/build_dataset.py
   start: "2022-01"               # drops stray out-of-window reports the export includes
   end: "2026-11"
   target: primary_problem        # single-label target
@@ -10,40 +12,68 @@ data:
   test_size: 0.2                 # LLM items are drawn only from the test pool
 
 # Cutoffs are month-level; the cutoff month itself is excluded from both sides.
+# Budgets sit below each free-tier limit to leave room for retries. Quotas are per model.
 models:
   - name: openai/gpt-oss-120b
     provider: groq
     training_cutoff: "2024-06"
     cutoff_source: "https://arxiv.org/html/2508.10925 §2.4: 'Our model has a knowledge cutoff of June 2024.'"
     extra: {reasoning_effort: low}   # hidden reasoning tokens count against the free-tier budget
+    experiments: [main, stability, probes]
+    max_attempts: 4
+    # Free tier: 30 RPM, 1K RPD, 8K TPM, 200K TPD (console, 2026-11-09)
+    budget: {daily_requests: 900, daily_tokens: 185000, reserve_requests: 8,
+             reserve_tokens: 3000, min_interval_s: 9, tz: UTC}
   - name: openai/gpt-oss-20b
     provider: groq
     training_cutoff: "2024-06"
     cutoff_source: "https://arxiv.org/html/2508.10925 §2.4 (same model card covers both sizes)"
     extra: {reasoning_effort: low}
+    experiments: [main, stability, probes]
+    max_attempts: 4
+    budget: {daily_requests: 900, daily_tokens: 185000, reserve_requests: 8,
+             reserve_tokens: 3000, min_interval_s: 9, tz: UTC}
   - name: gemini-3.6-flash
     # Chosen over 3.8 Flash, which returned repeated 503 "high demand" errors on 2026-11-09.
     # Both model cards state the same cutoff.
     provider: gemini
     # Card: "knowledge cutoff date ... is March 2026" but "in others ... limited to January 2025".
-    # Three zones: before 2025-01, 2025-01..2026-03 (ambiguous), after 2026-03 (Apr-Aug 2026 data).
+    # Before = before 2025-01; after = after 2026-03 (Apr-Aug 2026). The ambiguous zone is not sampled.
     training_cutoff: "2026-03"
     training_cutoff_partial: "2025-01"
     cutoff_source: "https://deepmind.google/models/model-cards/gemini-3-6-flash/"
     extra: {reasoning_effort: low}
+    # Free tier allows 20 requests/day, so Gemini runs the memorisation comparison only,
+    # without retrieval, accumulating daily.
+    experiments: [memorisation]
+    max_attempts: 2
+    # Free tier: 5 RPM, 250K TPM, 20 RPD (AI Studio, 2026-11-09); quota day is Pacific time.
+    budget: {daily_requests: 20, reserve_requests: 4, min_interval_s: 13,
+             tz: America/Los_Angeles}
 
-sampling:
-  n_eval: 300                    # per split; sized to free-tier token budgets
-  n_stability_items: 30
-  n_stability_runs: 10
-  temperature: 0.0
+experiments:
+  main:                          # memorisation x retrieval, the headline
+    n_per_side: 200              # before / after the training cutoff
+    conditions: [no_retrieval, retrieval]
+  stability:                     # the noise floor: identical prompt repeated
+    n_items: 20
+    n_runs: 10
+  probes:                        # each compared with main/no_retrieval on the same reports
+    n_items: 100
+    names: [jargon, order, padding]
+  memorisation:                  # Gemini: grows by ~16-20 reports a day
+    n_per_side: 200
 
 retrieval:
   k_examples: 5
 
 prompt:
-  max_narrative_words: 500
+  max_narrative_words: 500       # trims 8.9% of narratives
   max_tokens: 1024
+
+run:
+  plan_path: results/plan.json   # frozen once built; delete only to deliberately re-sample
+  trace_dir: results/traces      # one JSONL per model; every call, appended
 
 bootstrap:
   n_resamples: 2000

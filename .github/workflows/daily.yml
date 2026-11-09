@@ -1,0 +1,45 @@
+name: daily-run
+
+# Collection phase: each day, spend that day's free-tier allowance on the next jobs in the
+# frozen plan and commit the traces. Once the plan is complete the runner has nothing to do;
+# the weekly monitoring schedule replaces this one then.
+on:
+  schedule:
+    - cron: "23 9 * * *"     # 09:23 UTC: after Groq's UTC day and Gemini's Pacific day reset
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: experiment-run
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -e ".[dev]"
+      - run: pytest -q
+      - name: Run today's batch
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          python scripts/run_experiment.py --max-minutes 300
+          python scripts/run_experiment.py --status
+      - name: Commit traces
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add results/
+          if git diff --cached --quiet; then echo "nothing new"; exit 0; fi
+          git commit -m "Daily run $(date -u +%Y-%m-%d)"
+          git pull --rebase origin main
+          git push origin HEAD:main

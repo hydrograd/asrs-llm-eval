@@ -19,13 +19,15 @@ models:
     provider: groq
     training_cutoff: "2024-06"
     cutoff_source: "https://arxiv.org/html/2508.10925 §2.4 (same model card covers both sizes)"
-  - name: gemini-3.8-flash
+  - name: gemini-3.6-flash
+    # Chosen over 3.8 Flash, which returned repeated 503 "high demand" errors on 2026-11-09.
+    # Both model cards state the same cutoff.
     provider: gemini
     # Card: "knowledge cutoff date ... is March 2026" but "in others ... limited to January 2025".
     # Three zones: before 2025-01, 2025-01..2026-03 (ambiguous), after 2026-03 (Apr-Aug 2026 data).
     training_cutoff: "2026-03"
     training_cutoff_partial: "2025-01"
-    cutoff_source: "https://deepmind.google/models/model-cards/gemini-3-8-flash/"
+    cutoff_source: "https://deepmind.google/models/model-cards/gemini-3-6-flash/"
 
 sampling:
   n_eval: 300                    # per split; sized to free-tier token budgets

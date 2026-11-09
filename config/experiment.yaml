@@ -4,7 +4,7 @@ seed: 42
 data:
   raw_dir: data/raw              # every *.csv export here is merged, de-duplicated on ACN
   start: "2022-01"               # drops stray out-of-window reports the export includes
-  end: "2026-01"
+  end: "2026-11"
   target: primary_problem        # single-label target
   min_class_count: 30            # rarer classes folded into "Other"
   test_size: 0.2                 # LLM items are drawn only from the test pool
@@ -22,7 +22,7 @@ models:
   - name: gemini-3.8-flash
     provider: gemini
     # Card: "knowledge cutoff date ... is March 2026" but "in others ... limited to January 2025".
-    # All current data (to 2026-01) is before March 2026, so Gemini has no clean post-cutoff set.
+    # Three zones: before 2025-01, 2025-01..2026-03 (ambiguous), after 2026-03 (Apr-Aug 2026 data).
     training_cutoff: "2026-03"
     training_cutoff_partial: "2025-01"
     cutoff_source: "https://deepmind.google/models/model-cards/gemini-3-8-flash/"

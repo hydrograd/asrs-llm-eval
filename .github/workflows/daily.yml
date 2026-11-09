@@ -34,6 +34,8 @@ jobs:
         run: |
           python scripts/run_experiment.py --max-minutes 300
           python scripts/run_experiment.py --status
+      - name: Rebuild results.json
+        run: python scripts/make_report.py
       - name: Commit traces
         run: |
           git config user.name "github-actions[bot]"

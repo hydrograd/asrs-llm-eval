@@ -31,7 +31,7 @@ def ci(d):
 def chart(name, caption):
     p = CHARTS / name
     if p.exists():
-        st.image(str(p), use_container_width=True)
+        st.image(str(p), width="stretch")
         st.caption(caption)
     else:
         st.info(f"{name} not available yet: not enough data collected.")
@@ -79,7 +79,7 @@ with tab_acc:
                              "majority same reports": a["majority_accuracy_same_reports"],
                              "macro-F1": a["macro_f1"], "kappa": a["cohen_kappa"],
                              "Brier": a.get("brier_top_label"), "ECE": a.get("ece")})
-    st.dataframe(pd.DataFrame(rows).round(3), hide_index=True, use_container_width=True)
+    st.dataframe(pd.DataFrame(rows).round(3), hide_index=True, width="stretch")
     eff = [(n, m["retrieval_effect"]) for n, m in res["models"].items() if "retrieval_effect" in m]
     if eff:
         st.subheader("Retrieval effect (same reports, with minus without)")
@@ -106,7 +106,7 @@ with tab_mem:
                              "LLM gap": ci(mem["llm_gap"]), "TF-IDF gap": ci(mem["tfidf_gap"]),
                              "adjusted gap": ci(mem["adjusted_gap"])})
     if rows:
-        st.dataframe(pd.DataFrame(rows).round(3), hide_index=True, use_container_width=True)
+        st.dataframe(pd.DataFrame(rows).round(3), hide_index=True, width="stretch")
 
 # ------------------------------------------------------------------ calibration
 with tab_cal:
@@ -131,7 +131,7 @@ with tab_probe:
                              "beyond noise?": v.get("exceeds_noise_floor"),
                              "accuracy change": ci(v["accuracy_change"])})
     if rows:
-        st.dataframe(pd.DataFrame(rows), hide_index=True, use_container_width=True)
+        st.dataframe(pd.DataFrame(rows), hide_index=True, width="stretch")
 
 # ------------------------------------------------------------------ reliability
 with tab_rel:
@@ -147,7 +147,7 @@ with tab_rel:
                          "output tokens / report": c.get("completion_tokens"),
                          "seconds / report": c.get("latency_s"),
                          "versions seen": ", ".join(m.get("provider_model_versions", []))})
-    st.dataframe(pd.DataFrame(rows).round(3), hide_index=True, use_container_width=True)
+    st.dataframe(pd.DataFrame(rows).round(3), hide_index=True, width="stretch")
     st.caption("Schema failure = reply not valid JSON in the required format on the first try. "
                "Refusal = failed again after the error was fed back; scored as wrong.")
 
@@ -158,6 +158,6 @@ with tab_base:
         st.markdown("Baselines on the **full** held-out test pool (all test reports, not only those "
                     "the LLMs have been run on).")
         st.dataframe(pd.DataFrame(b).T.drop(columns=["accuracy_ci"], errors="ignore").round(3),
-                     use_container_width=True)
+                     width="stretch")
     with st.expander("Scoring rules"):
         st.text(res["scoring_rules"])

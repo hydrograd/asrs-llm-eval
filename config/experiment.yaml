@@ -9,20 +9,23 @@ data:
   min_class_count: 30            # rarer classes folded into "Other"
   test_size: 0.2                 # LLM items are drawn only from the test pool
 
-# Fill in with documented cutoffs + source links before running the memorisation split.
+# Cutoffs are month-level; the cutoff month itself is excluded from both sides.
 models:
-  - name: TODO-groq-model
+  - name: openai/gpt-oss-120b
     provider: groq
-    training_cutoff: null        # YYYY-MM-DD
-    cutoff_source: null
-  - name: TODO-gemini-model
+    training_cutoff: "2024-06"
+    cutoff_source: "https://arxiv.org/html/2508.10925 §2.4: 'Our model has a knowledge cutoff of June 2024.'"
+  - name: openai/gpt-oss-20b
+    provider: groq
+    training_cutoff: "2024-06"
+    cutoff_source: "https://arxiv.org/html/2508.10925 §2.4 (same model card covers both sizes)"
+  - name: gemini-3.8-flash
     provider: gemini
-    training_cutoff: null
-    cutoff_source: null
-  - name: TODO-third-model
-    provider: groq
-    training_cutoff: null
-    cutoff_source: null
+    # Card: "knowledge cutoff date ... is March 2026" but "in others ... limited to January 2025".
+    # All current data (to 2026-01) is before March 2026, so Gemini has no clean post-cutoff set.
+    training_cutoff: "2026-03"
+    training_cutoff_partial: "2025-01"
+    cutoff_source: "https://deepmind.google/models/model-cards/gemini-3-8-flash/"
 
 sampling:
   n_eval: 300                    # per split; sized to free-tier token budgets

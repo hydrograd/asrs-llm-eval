@@ -1,0 +1,110 @@
+"""Schema validation and the agent's retry/refusal logic, with a scripted fake provider
+so no network or API key is needed."""
+import json
+
+import pandas as pd
+import pytest
+
+from asrs_eval import agent, schema
+from asrs_eval.providers import ProviderError, Reply
+
+GOOD = json.dumps({"primary_problem": "Human Factors", "confidence": 0.8, "reason": "Crew missed it."})
+
+
+class FakeProvider:
+    model = "fake-model"
+
+    def __init__(self, replies):
+        self.replies, self.calls = list(replies), []
+
+    def complete(self, messages, **kw):
+        self.calls.append(messages)
+        r = self.replies.pop(0)
+        if isinstance(r, Exception):
+            raise r
+        return Reply(text=r, model="fake-model-v1", fingerprint="fp1", prompt_tokens=100,
+                     completion_tokens=20, reasoning_tokens=5, latency_s=0.5, attempts=1, raw={})
+
+
+# --- schema -------------------------------------------------------------------------
+
+def test_validate_accepts_good_reply():
+    parsed, err = schema.validate(GOOD)
+    assert err is None and parsed.primary_problem == "Human Factors" and parsed.confidence == 0.8
+
+
+def test_validate_accepts_fenced_json_and_normalises_case():
+    text = '```json\n{"primary_problem": "human  factors", "confidence": 1, "reason": "x"}\n```'
+    parsed, err = schema.validate(text)
+    assert err is None and parsed.primary_problem == "Human Factors"
+
+
+@pytest.mark.parametrize("text, fragment", [
+    ("not json", "not valid JSON"),
+    ('["a list"]', "not an object"),
+    ('{"primary_problem": "Pilot Error", "confidence": 0.5, "reason": "x"}', "must be one of"),
+    ('{"primary_problem": "Weather", "confidence": 1.5, "reason": "x"}', "confidence"),
+    ('{"primary_problem": "Weather", "reason": "x"}', "confidence"),
+    ('{"primary_problem": "Weather", "confidence": 0.5, "reason": ""}', "reason"),
+    ('Sure! {"primary_problem": "Weather", "confidence": 0.5, "reason": "x"}', "not valid JSON"),
+])
+def test_validate_rejects(text, fragment):
+    parsed, err = schema.validate(text)
+    assert parsed is None and fragment in err
+
+
+# --- agent loop ---------------------------------------------------------------------
+
+def test_first_reply_valid():
+    p = FakeProvider([GOOD])
+    r = agent.classify(1, "narrative", p)
+    assert (r.status, r.prediction, r.schema_failures, len(p.calls)) == ("ok", "Human Factors", 0, 1)
+    assert r.prompt_tokens == 100 and r.provider_model == "fake-model-v1"
+
+
+def test_retry_feeds_error_back_then_succeeds():
+    p = FakeProvider(["garbage", GOOD])
+    r = agent.classify(1, "narrative", p)
+    assert r.status == "ok_after_retry" and r.schema_failures == 1
+    retry_msgs = p.calls[1]
+    assert retry_msgs[-2] == {"role": "assistant", "content": "garbage"}
+    assert "rejected" in retry_msgs[-1]["content"] and "not valid JSON" in retry_msgs[-1]["content"]
+    assert r.prompt_tokens == 200          # both attempts counted
+
+
+def test_two_failures_recorded_as_refusal_not_dropped():
+    p = FakeProvider(["garbage", '{"primary_problem": "Nope", "confidence": 0.5, "reason": "x"}'])
+    r = agent.classify(1, "narrative", p)
+    assert r.status == "refusal" and r.prediction is None and r.schema_failures == 2
+    assert len(r.raw_replies) == 2
+
+
+def test_provider_error_is_separate_from_refusal():
+    p = FakeProvider([ProviderError("HTTP 503")])
+    r = agent.classify(1, "narrative", p)
+    assert r.status == "provider_error" and r.schema_failures == 0
+
+
+def test_truncation():
+    text, cut = agent.truncate_words("a b c d e", 3)
+    assert text == "a b c [...]" and cut
+    assert agent.truncate_words("a b", 3) == ("a b", False)
+
+
+def test_examples_appear_in_prompt_with_labels():
+    ex = pd.DataFrame({"acn": [7], "synopsis": ["Crew missed a hold short."],
+                       "primary_problem": ["Human Factors"], "similarity": [0.9]})
+    msgs = agent.build_messages("the narrative", ex)
+    assert "Crew missed a hold short." in msgs[1]["content"]
+    assert "Primary Problem: Human Factors" in msgs[1]["content"]
+    assert msgs[1]["content"].endswith("the narrative")
+
+
+def test_prompt_hash_differs_with_and_without_retrieval():
+    class R:
+        def top_k(self, n, k):
+            return pd.DataFrame({"acn": [7], "synopsis": ["s"], "primary_problem": ["Weather"],
+                                 "similarity": [1.0]})
+    a = agent.classify(1, "n", FakeProvider([GOOD]))
+    b = agent.classify(1, "n", FakeProvider([GOOD]), retriever=R())
+    assert a.prompt_hash != b.prompt_hash and b.retrieved_acns == [7]

@@ -15,10 +15,12 @@ models:
     provider: groq
     training_cutoff: "2024-06"
     cutoff_source: "https://arxiv.org/html/2508.10925 §2.4: 'Our model has a knowledge cutoff of June 2024.'"
+    extra: {reasoning_effort: low}   # hidden reasoning tokens count against the free-tier budget
   - name: openai/gpt-oss-20b
     provider: groq
     training_cutoff: "2024-06"
     cutoff_source: "https://arxiv.org/html/2508.10925 §2.4 (same model card covers both sizes)"
+    extra: {reasoning_effort: low}
   - name: gemini-3.6-flash
     # Chosen over 3.8 Flash, which returned repeated 503 "high demand" errors on 2026-11-09.
     # Both model cards state the same cutoff.
@@ -28,6 +30,7 @@ models:
     training_cutoff: "2026-03"
     training_cutoff_partial: "2025-01"
     cutoff_source: "https://deepmind.google/models/model-cards/gemini-3-6-flash/"
+    extra: {reasoning_effort: low}
 
 sampling:
   n_eval: 300                    # per split; sized to free-tier token budgets
@@ -37,6 +40,10 @@ sampling:
 
 retrieval:
   k_examples: 5
+
+prompt:
+  max_narrative_words: 500
+  max_tokens: 1024
 
 bootstrap:
   n_resamples: 2000

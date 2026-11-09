@@ -9,7 +9,9 @@ from pathlib import Path
 
 import yaml
 
-from asrs_eval import baselines, data, report
+from collections import Counter
+
+from asrs_eval import baselines, charts, data, report
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -32,6 +34,9 @@ def main():
     res = report.build(cfg, df, traces, plan, tfidf_pred, majority,
                        json.loads(bj.read_text()) if bj.exists() else None)
     (ROOT / "results/results.json").write_text(json.dumps(res, indent=2))
+    made = charts.all_charts(res, traces, dict(Counter(j["model"] for j in plan)),
+                             ROOT / "results/charts")
+    print("charts:", ", ".join(made))
 
     for name, r in res["models"].items():
         p = r["progress"]

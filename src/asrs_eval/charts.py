@@ -85,91 +85,113 @@ def _h(marker, color, label, **kw):
     return plt.Line2D([], [], marker=marker, color=color, linestyle="none", label=label, **kw)
 
 
-def _conditions(res):
-    conds = []
-    for m in res["models"].values():
-        for c in m.get("main", {}):
-            if c not in conds:
-                conds.append(c)
-    return sorted(conds, key=lambda c: c != "no_retrieval")
+COND_ORDER = ["no_retrieval", "retrieval", "retrieval_dense", "tool_retrieval"]
+COND_LABEL = {"no_retrieval": "no retrieval", "retrieval": "sparse retrieval (TF-IDF)",
+              "retrieval_dense": "dense retrieval (embeddings)", "tool_retrieval": "retrieval as a tool"}
+
+
+def _model_conditions(m: dict) -> list[str]:
+    return [c for c in COND_ORDER if c in m.get("main", {})] + \
+           [c for c in m.get("main", {}) if c not in COND_ORDER]
+
+
+def _grouped_rows(res: dict, conds_fn):
+    """Row layout for one tall panel: a header row per model, then one row per condition.
+    Returns [(y, kind, model, cond)] from top to bottom, and the number of rows."""
+    layout, y = [], 0
+    for name, m in res["models"].items():
+        conds = conds_fn(m) if m.get("main") else []
+        if not conds:
+            continue
+        layout.append((y, "header", name, None)); y += 1
+        for c in conds:
+            layout.append((y, "row", name, c)); y += 1
+        y += 0.35
+    return [(-yy, k, n, c) for yy, k, n, c in layout], y
+
+
+def _grouped_axes(res, layout, n_rows, xlabel, xlim):
+    fig, ax = plt.subplots(figsize=(6.6, 0.36 * n_rows + 1.25))
+    for yy, kind, name, cond in layout:
+        if kind == "header":
+            ax.text(-0.02, yy, SHORT.get(name, name), transform=ax.get_yaxis_transform(),
+                    ha="right", va="center", fontsize=9.5, fontweight="bold", color=INK)
+            ax.axhline(yy - 0.5, color=GRID, linewidth=0.6)
+        else:
+            ax.text(-0.02, yy, COND_LABEL.get(cond, cond), transform=ax.get_yaxis_transform(),
+                    ha="right", va="center", fontsize=8.5, color=INK, fontstyle="italic")
+    ax.set_yticks([])
+    ax.set_ylim(min(l[0] for l in layout) - 0.6, 0.6)
+    ax.set_xlim(*xlim)
+    _axes(ax)
+    ax.set_xlabel(xlabel)
+    return fig, ax
 
 
 # ------------------------------------------------------------------- figure: accuracy
 
 def accuracy_vs_baselines(res: dict, path: Path):
-    conds = _conditions(res)
-    if not conds:
+    """One row per model x condition, each on the reports that condition ran on."""
+    if not any(m.get("main") for m in res["models"].values()):
         return False
-    models = list(res["models"])
-    fig, axes = plt.subplots(1, len(conds), figsize=(2.9 * len(conds) + 1.3, 0.55 * len(models) + 1.5),
-                             sharey=True, squeeze=False)
-    y = np.arange(len(models))[::-1]
-    for i, (ax, cond) in enumerate(zip(axes[0], conds)):
-        for yi, name in zip(y, models):
-            e = res["models"][name].get("main", {}).get(cond)
-            if not e:
-                continue
-            a = e["all"]
-            lo, hi = a["accuracy_ci95"]
-            ax.plot([lo, hi], [yi, yi], color=BLUE, linewidth=1.6, solid_capstyle="butt")
-            ax.plot(a["accuracy"], yi, "o", color=BLUE, markersize=6.5, markeredgecolor=PAPER,
-                    markeredgewidth=1.2, zorder=3)
-            ax.plot(a["tfidf_accuracy_same_reports"], yi, "D", color=GREEN, markersize=5,
-                    markeredgecolor=PAPER, markeredgewidth=1, zorder=3)
-            ax.plot(a["majority_accuracy_same_reports"], yi, "|", color=GREY, markersize=11,
-                    markeredgewidth=1.6, zorder=2)
-            ax.text(1.0, yi, f"{a['accuracy']:.2f}", va="center", ha="left", fontsize=8,
-                    color=INK, transform=ax.get_yaxis_transform())
-        _axes(ax)
-        ax.set_xlim(0, 1)
-        ax.set_ylim(-0.6, len(models) - 0.4)
-        ax.set_yticks(y, [SHORT.get(m, m) for m in models])
-        ax.set_xlabel("agreement with ASRS analyst (accuracy)")
-        _panel(ax, "abcd"[i], cond.replace("_", " "))
-    _legend(fig, [_h("o", BLUE, "LLM, with 95% CI", markersize=6),
-                  _h("D", GREEN, "TF-IDF + logistic regression, same reports", markersize=5),
-                  _h("|", GREY, "most common class, same reports", markersize=10, markeredgewidth=1.6)], 3)
+    layout, n = _grouped_rows(res, _model_conditions)
+    fig, ax = _grouped_axes(res, layout, n, "accuracy against the ASRS analyst's code", (0, 1))
+    for yy, kind, name, cond in layout:
+        if kind != "row":
+            continue
+        a = res["models"][name]["main"][cond]["all"]
+        lo, hi = a["accuracy_ci95"]
+        ax.plot([lo, hi], [yy, yy], color=BLUE, linewidth=1.6, solid_capstyle="butt")
+        ax.plot(a["accuracy"], yy, "o", color=BLUE, markersize=6, markeredgecolor=PAPER,
+                markeredgewidth=1.1, zorder=3)
+        ax.plot(a["tfidf_accuracy_same_reports"], yy, "D", color=GREEN, markersize=4.6,
+                markeredgecolor=PAPER, markeredgewidth=0.9, zorder=3)
+        ax.plot(a["majority_accuracy_same_reports"], yy, "|", color=GREY, markersize=10,
+                markeredgewidth=1.5, zorder=2)
+        ax.text(1.01, yy, f"{a['accuracy']:.2f}", va="center", ha="left", fontsize=8, color=INK,
+                transform=ax.get_yaxis_transform())
+        ax.text(1.09, yy, f"n={a['n']}", va="center", ha="left", fontsize=7, color=INK2,
+                transform=ax.get_yaxis_transform())
+    _legend(fig, [_h("o", BLUE, "LLM, 95% CI", markersize=6),
+                  _h("D", GREEN, "TF-IDF classifier", markersize=5),
+                  _h("|", GREY, "most common class", markersize=10, markeredgewidth=1.5)], 3)
     _stamp(fig, res)
-    _save(fig, path, bottom=0.12)
+    _save(fig, path, bottom=0.07)
     return True
 
 
 # --------------------------------------------------------------- figure: memorisation
 
 def memorisation(res: dict, path: Path):
-    conds = _conditions(res)
-    models = [n for n, m in res["models"].items()
-              if any("llm_gap" in e.get("memorisation", {}) for e in m.get("main", {}).values())]
-    if not models:
+    """One row per model x condition: raw gap and gap net of TF-IDF's gap, same reports."""
+    def has(m):
+        return [c for c in _model_conditions(m) if "llm_gap" in m["main"][c].get("memorisation", {})]
+    if not any(has(m) for m in res["models"].values() if m.get("main")):
         return False
-    fig, axes = plt.subplots(1, len(conds), figsize=(2.9 * len(conds) + 1.4, 0.75 * len(models) + 1.5),
-                             sharey=True, sharex=True, squeeze=False)
-    y = np.arange(len(models))[::-1]
-    for i, (ax, cond) in enumerate(zip(axes[0], conds)):
-        ax.axvline(0, color=INK2, linewidth=0.8)
-        for yi, name in zip(y, models):
-            mem = res["models"][name].get("main", {}).get(cond, {}).get("memorisation", {})
-            if "llm_gap" not in mem:
-                continue
-            for off, key, col, mk in [(0.15, "llm_gap", ORANGE, "o"), (-0.15, "adjusted_gap", BLUE, "s")]:
-                g = mem[key]
-                ax.plot(g["ci95"], [yi + off] * 2, color=col, linewidth=1.6, solid_capstyle="butt")
-                ax.plot(g["estimate"], yi + off, mk, color=col, markersize=6, markeredgecolor=PAPER,
-                        markeredgewidth=1.2, zorder=3)
-            ax.text(1.0, yi, f"n={mem['n_pre']}+{mem['n_post']}", va="center", ha="left",
-                    fontsize=7.5, color=INK2, transform=ax.get_yaxis_transform())
-        _axes(ax)
-        ax.set_ylim(-0.6, len(models) - 0.4)
-        ax.set_yticks(y, [SHORT.get(m, m) for m in models])
-        ax.set_xlabel("accuracy before − after cutoff")
-        _panel(ax, "abcd"[i], cond.replace("_", " "))
-    lim = max(abs(v) for ax in axes[0] for v in ax.get_xlim())
-    for ax in axes[0]:
-        ax.set_xlim(-lim, lim)
+    layout, n = _grouped_rows(res, has)
+    lim = 0.3
+    for yy, kind, name, cond in layout:
+        if kind == "row":
+            mem = res["models"][name]["main"][cond]["memorisation"]
+            lim = max(lim, *(abs(v) for k in ("llm_gap", "adjusted_gap") for v in mem[k]["ci95"]))
+    lim = min(1.0, lim + 0.05)
+    fig, ax = _grouped_axes(res, layout, n, "accuracy before − after the training cutoff", (-lim, lim))
+    ax.axvline(0, color=INK2, linewidth=0.8)
+    for yy, kind, name, cond in layout:
+        if kind != "row":
+            continue
+        mem = res["models"][name]["main"][cond]["memorisation"]
+        for off, key, col, mk in [(0.17, "llm_gap", ORANGE, "o"), (-0.17, "adjusted_gap", BLUE, "s")]:
+            g = mem[key]
+            ax.plot(g["ci95"], [yy + off] * 2, color=col, linewidth=1.5, solid_capstyle="butt")
+            ax.plot(g["estimate"], yy + off, mk, color=col, markersize=5, markeredgecolor=PAPER,
+                    markeredgewidth=1, zorder=3)
+        ax.text(1.01, yy, f"n={mem['n_pre']}+{mem['n_post']}", va="center", ha="left", fontsize=7,
+                color=INK2, transform=ax.get_yaxis_transform())
     _legend(fig, [_h("o", ORANGE, "raw gap", markersize=6),
-                  _h("s", BLUE, "gap net of TF-IDF's gap on the same reports", markersize=6)], 2)
+                  _h("s", BLUE, "net of TF-IDF's gap on the same reports", markersize=6)], 2)
     _stamp(fig, res)
-    _save(fig, path, bottom=0.13)
+    _save(fig, path, bottom=0.08)
     return True
 
 

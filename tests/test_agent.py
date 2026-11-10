@@ -102,7 +102,7 @@ def test_examples_appear_in_prompt_with_labels():
 
 def test_prompt_hash_differs_with_and_without_retrieval():
     class R:
-        def top_k(self, n, k):
+        def top_k(self, n, k, acn=None):
             return pd.DataFrame({"acn": [7], "synopsis": ["s"], "primary_problem": ["Weather"],
                                  "similarity": [1.0]})
     a = agent.classify(1, "n", FakeProvider([GOOD]))
@@ -146,3 +146,75 @@ def test_other_400s_are_still_provider_errors():
     bad = (400, {"error": {"code": "model_not_found", "message": "no such model"}})
     r = agent.classify(1, "narrative", _provider_with([bad]))
     assert r.status == "provider_error"
+
+
+# --- retrieval as a tool -----------------------------------------------------------
+
+def tool_reply(k, cid="c1"):
+    msg = {"role": "assistant", "content": "", "tool_calls": [
+        {"id": cid, "type": "function",
+         "function": {"name": "find_similar_reports", "arguments": json.dumps({"k": k})}}]}
+    return Reply("", "fake-model-v1", None, 100, 5, 0, 0.1, 1, {},
+                 tool_calls=[{"id": cid, "name": "find_similar_reports",
+                              "arguments": json.dumps({"k": k})}], message=msg)
+
+
+class ToolFake(FakeProvider):
+    def __init__(self, replies):
+        super().__init__(replies)
+        self.kwargs = []
+
+    def complete(self, messages, **kw):
+        self.kwargs.append(kw)
+        r = self.replies.pop(0) if isinstance(self.replies[0], Reply) else None
+        if r is not None:
+            self.calls.append(messages)
+            return r
+        return super().complete(messages, **kw)
+
+
+class Ret:
+    def __init__(self):
+        self.asked = []
+
+    def top_k(self, narrative, k, acn=None):
+        self.asked.append(k)
+        return pd.DataFrame({"acn": list(range(100, 100 + k)), "synopsis": [f"s{i}" for i in range(k)],
+                             "primary_problem": ["Weather"] * k, "similarity": [0.5] * k})
+
+
+def test_tool_not_called_answers_directly():
+    p, ret = ToolFake([GOOD]), Ret()
+    r = agent.classify(1, "narr", p, retriever=ret, tool=True, condition="tool_retrieval")
+    assert r.status == "ok" and r.tool_calls == [] and ret.asked == []
+    assert p.kwargs[0]["tools"][0]["function"]["name"] == "find_similar_reports"
+    assert "find_similar_reports" in p.calls[0][0]["content"]          # tool explained in system prompt
+
+
+def test_tool_call_result_is_fed_back_then_answer():
+    p, ret = ToolFake([tool_reply(3), GOOD]), Ret()
+    r = agent.classify(1, "narr", p, retriever=ret, tool=True)
+    assert r.status == "ok" and r.tool_calls == [{"k": 3, "returned": 3}]
+    assert r.retrieved_acns == [100, 101, 102] and r.requests == 2
+    second = p.calls[1]
+    assert second[-2]["tool_calls"][0]["id"] == "c1"
+    assert second[-1]["role"] == "tool" and second[-1]["tool_call_id"] == "c1"
+    assert "Primary Problem: Weather" in second[-1]["content"]
+
+
+def test_tool_k_is_clamped():
+    p, ret = ToolFake([tool_reply(50), GOOD]), Ret()
+    assert agent.classify(1, "narr", p, retriever=ret, tool=True).tool_calls[0]["k"] == 5
+
+
+def test_tool_rounds_are_capped_then_json_forced():
+    p, ret = ToolFake([tool_reply(2, "a"), tool_reply(2, "b"), GOOD]), Ret()
+    r = agent.classify(1, "narr", p, retriever=ret, tool=True)
+    assert r.status == "ok" and len(r.tool_calls) == agent.MAX_TOOL_ROUNDS
+    assert "tools" not in p.kwargs[-1] and p.kwargs[-1].get("json_mode") is True
+
+
+def test_tool_condition_schema_failure_then_refusal():
+    p, ret = ToolFake(["not json", "still not json"]), Ret()
+    r = agent.classify(1, "narr", p, retriever=ret, tool=True)
+    assert r.status == "refusal" and r.schema_failures == 2 and r.prediction is None

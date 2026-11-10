@@ -135,3 +135,31 @@ def test_monitoring_jobs_do_not_count_as_progress():
     t = pd.DataFrame(base + wk)
     res = report.build(CFG, DF, t, [{"model": "m", "key": base[0]["key"]}], {}, "Aircraft")
     assert res["models"]["m"]["progress"] == {"done": 1, "planned": 1, "complete": True}
+
+
+def test_condition_effects_pair_on_shared_reports_only():
+    # dense runs on reports 1-2 only; sparse and none on 1-3
+    rows = [tr(1, "pre", "Weather", "Aircraft"), tr(2, "pre", "Weather", "Aircraft"), tr(3, "post", "Aircraft", "Aircraft"),
+            tr(1, "pre", "Aircraft", "Aircraft", condition="retrieval"),
+            tr(2, "pre", "Weather", "Aircraft", condition="retrieval"),
+            tr(3, "post", "Aircraft", "Aircraft", condition="retrieval"),
+            tr(1, "pre", "Aircraft", "Aircraft", condition="retrieval_dense"),
+            tr(2, "pre", "Aircraft", "Aircraft", condition="retrieval_dense")]
+    eff = build(rows)["condition_effects"]
+    assert eff["retrieval - no_retrieval"]["n"] == 3
+    assert eff["retrieval - no_retrieval"]["estimate"] == pytest.approx(1 / 3)
+    assert eff["retrieval_dense - retrieval"]["n"] == 2                     # only shared reports
+    assert eff["retrieval_dense - retrieval"]["estimate"] == pytest.approx(0.5)
+
+
+def test_tool_usage_summary():
+    rows = [tr(1, "pre", "Aircraft", "Aircraft", condition="retrieval"),
+            tr(2, "pre", "Aircraft", "Aircraft", condition="retrieval")]
+    t1 = tr(1, "pre", "Aircraft", "Aircraft", condition="tool_retrieval")
+    t1["tool_calls"] = [{"k": 3, "returned": 3}]
+    t2 = tr(2, "pre", "Weather", "Aircraft", condition="tool_retrieval")
+    t2["tool_calls"] = []
+    tu = build(rows + [t1, t2])["tool_usage"]
+    assert tu["n"] == 2 and tu["share_calling_tool"]["estimate"] == 0.5
+    assert tu["k_requested"] == {3: 1}
+    assert tu["accuracy_when_called"] == 1.0 and tu["accuracy_when_not_called"] == 0.0

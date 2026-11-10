@@ -32,6 +32,8 @@ class Reply:
     latency_s: float
     attempts: int
     raw: dict = field(repr=False)
+    tool_calls: list = field(default_factory=list)   # [{"id", "name", "arguments"}]
+    message: dict | None = field(default=None, repr=False)  # assistant message, to append
 
 
 class ProviderError(RuntimeError):
@@ -53,10 +55,14 @@ class Provider:
             headers={"Authorization": f"Bearer {key}"})
 
     def complete(self, messages: list[dict], temperature: float = 0.0,
-                 max_tokens: int = 1024, json_mode: bool = True) -> Reply:
+                 max_tokens: int = 1024, json_mode: bool = True,
+                 tools: list[dict] | None = None, tool_choice: str | None = None) -> Reply:
         body = {"model": self.model, "messages": messages, "temperature": temperature,
                 "max_tokens": max_tokens, **self.extra}
-        if json_mode:
+        if tools:
+            body["tools"] = tools
+            body["tool_choice"] = tool_choice or "auto"
+        if json_mode and not tools:
             body["response_format"] = {"type": "json_object"}
         delay = 2.0
         for attempt in range(1, self.max_attempts + 1):
@@ -112,7 +118,14 @@ class Provider:
         choice = j["choices"][0]["message"]
         usage = j.get("usage") or {}
         details = usage.get("completion_tokens_details") or {}
+        calls = [{"id": c.get("id"), "name": (c.get("function") or {}).get("name"),
+                  "arguments": (c.get("function") or {}).get("arguments") or "{}"}
+                 for c in (choice.get("tool_calls") or [])]
+        message = {"role": "assistant", "content": choice.get("content") or ""}
+        if choice.get("tool_calls"):
+            message["tool_calls"] = choice["tool_calls"]
         return Reply(
+            tool_calls=calls, message=message,
             text=choice.get("content") or "",
             model=j.get("model", self.model),
             fingerprint=j.get("system_fingerprint"),

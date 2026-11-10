@@ -136,7 +136,8 @@ def probe_effects(probe: pd.DataFrame, base: pd.DataFrame, floor: dict, b: dict)
 
 
 def build(cfg: dict, df: pd.DataFrame, traces: pd.DataFrame, plan: list[dict],
-          tfidf_pred: dict, majority_label: str, baselines_json: dict | None = None) -> dict:
+          tfidf_pred: dict, majority_label: str, baselines_json: dict | None = None,
+          retrieval_quality: dict | None = None) -> dict:
     b = {**cfg["bootstrap"], "seed": cfg["seed"]}
     labels = set(df["label"])
     t = traces.copy()
@@ -148,7 +149,8 @@ def build(cfg: dict, df: pd.DataFrame, traces: pd.DataFrame, plan: list[dict],
 
     out = {"generated": datetime.now(timezone.utc).isoformat(timespec="seconds"),
            "scoring_rules": __doc__.split("Scoring rules")[1].strip(),
-           "baselines_full_test_pool": baselines_json, "models": {}}
+           "baselines_full_test_pool": baselines_json, "retrieval_quality": retrieval_quality,
+           "models": {}}
     plan_counts = Counter(j["model"] for j in plan)
     plan_keys = {j["key"] for j in plan if "key" in j}
 
@@ -195,13 +197,14 @@ def build(cfg: dict, df: pd.DataFrame, traces: pd.DataFrame, plan: list[dict],
             entry["memorisation"] = memorisation(g, b)
             r["main"][cond] = entry
 
-        if {"no_retrieval", "retrieval"} <= set(main.condition):
-            w = main.pivot_table(index="acn", columns="condition", values="correct")
-            w = w.dropna()
-            if len(w) >= 2:
-                r["retrieval_effect"] = {"n": int(len(w)), **_ci(M.paired_diff_ci(
-                    w["retrieval"].to_numpy(), w["no_retrieval"].to_numpy(),
-                    n_resamples=b["n_resamples"], ci=b["ci"], seed=b["seed"]))}
+        effects = condition_effects(main, b)
+        if effects:
+            r["condition_effects"] = effects
+            if "retrieval - no_retrieval" in effects:      # kept for backward compatibility
+                r["retrieval_effect"] = effects["retrieval - no_retrieval"]
+        tool = main[main.condition == "tool_retrieval"]
+        if len(tool):
+            r["tool_usage"] = tool_usage(tool, main, b)
 
         floor = noise_floor(md[md.experiment == "stability"], b) if "stability" in m["experiments"] else None
         if floor is not None:
@@ -214,6 +217,51 @@ def build(cfg: dict, df: pd.DataFrame, traces: pd.DataFrame, plan: list[dict],
             r["monitoring"] = monitoring(mon, main[main.condition == "no_retrieval"],
                                          floor, sorted(map(str, main.provider_model.dropna().unique())), b)
         out["models"][name] = r
+    return out
+
+
+# (treatment, control) pairs compared on the reports both have, paired bootstrap
+CONDITION_PAIRS = [("retrieval", "no_retrieval"), ("retrieval_dense", "no_retrieval"),
+                   ("retrieval_dense", "retrieval"), ("tool_retrieval", "no_retrieval"),
+                   ("tool_retrieval", "retrieval")]
+
+
+def condition_effects(main: pd.DataFrame, b: dict) -> dict:
+    """Accuracy difference between two conditions on exactly the reports both have run on."""
+    w = main.pivot_table(index="acn", columns="condition", values="correct")
+    out = {}
+    for t, c in CONDITION_PAIRS:
+        if t in w and c in w:
+            both = w[[t, c]].dropna()
+            if len(both) >= 2:
+                out[f"{t} - {c}"] = {"n": int(len(both)), **_ci(M.paired_diff_ci(
+                    both[t].to_numpy(), both[c].to_numpy(),
+                    n_resamples=b["n_resamples"], ci=b["ci"], seed=b["seed"]))}
+    return out
+
+
+def tool_usage(tool: pd.DataFrame, main: pd.DataFrame, b: dict) -> dict:
+    """How the model used find_similar_reports. Accuracy split by whether it called the tool is
+    observational (the model chose), so it is reported as description, not as an effect."""
+    calls = tool["tool_calls"].apply(lambda x: x if isinstance(x, list) else [])
+    called = calls.apply(len) > 0
+    ks = [c["k"] for cs in calls for c in cs]
+    lo, hi = M.bootstrap_ci(called.astype(float).to_numpy(), np.mean, b["n_resamples"], b["ci"], b["seed"])
+    other = main[main.condition == "retrieval"].set_index("acn")
+    same = tool[tool.acn.isin(other.index)]
+    out = {"n": int(len(tool)),
+           "share_calling_tool": {"estimate": float(called.mean()), "ci95": [lo, hi]},
+           "calls_per_report": float(calls.apply(len).mean()),
+           "k_requested": dict(sorted(Counter(ks).items())),
+           "accuracy_when_called": float(tool[called].correct.mean()) if called.any() else None,
+           "n_called": int(called.sum()),
+           "accuracy_when_not_called": float(tool[~called].correct.mean()) if (~called).any() else None,
+           "n_not_called": int((~called).sum()),
+           "tokens_per_report": float((tool.prompt_tokens + tool.completion_tokens).mean()),
+           "requests_per_report": float(tool.requests.mean())}
+    if len(same):
+        out["always_retrieve_tokens_per_report_same_reports"] = float(
+            (other.loc[same.acn].prompt_tokens + other.loc[same.acn].completion_tokens).mean())
     return out
 
 

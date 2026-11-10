@@ -1,5 +1,5 @@
 {
-  "generated": "2026-11-10T15:05:45+00:00",
+  "generated": "2026-11-10T18:01:12+00:00",
   "scoring_rules": "(stated here because every number depends on them):\n- Predictions use the full ASRS label set; they are folded into \"Other\" with the same\n  rare-class mapping as the human labels before comparison.\n- A refusal (schema failed twice) counts as WRONG in accuracy, macro-F1 and kappa, and is\n  excluded from calibration (it has no confidence). Refusal rates are reported separately.\n- Provider errors are not results: those jobs are still pending and are reported only as\n  an availability figure.\n- Baselines are scored on exactly the same reports as each model result.\n- Memorisation = accuracy(before cutoff) - accuracy(after cutoff), different reports, so an\n  unpaired bootstrap. Because the \"after\" reports could simply be harder, the same gap is\n  computed for the TF-IDF baseline (which cannot have memorised anything) and subtracted:\n  the adjusted gap is the LLM's drop beyond what the reports' difficulty explains.\n- Retrieval and probe effects compare the same reports, so a paired bootstrap.\n- The noise floor is how often an identical prompt gets a different answer; every probe's\n  answer-change rate is compared with it.",
   "baselines_full_test_pool": {
     "majority": {
@@ -27,6 +27,7 @@
       "n_test": 4985
     }
   },
+  "retrieval_quality": null,
   "models": {
     "openai/gpt-oss-120b": {
       "provider": "groq",
@@ -57,7 +58,7 @@
           "all": {
             "n": 234,
             "accuracy": 0.5128205128205128,
-            "macro_f1": 0.38235445254556183,
+            "macro_f1": 0.3823544525455617,
             "cohen_kappa": 0.37726731563835,
             "refusal_rate": 0.0,
             "schema_failure_rate": 0.0,
@@ -146,7 +147,7 @@
           "post": {
             "n": 117,
             "accuracy": 0.5897435897435898,
-            "macro_f1": 0.49385733544340893,
+            "macro_f1": 0.49385733544340904,
             "cohen_kappa": 0.46325145751696456,
             "refusal_rate": 0.0,
             "schema_failure_rate": 0.0,
@@ -444,7 +445,7 @@
           "post": {
             "n": 118,
             "accuracy": 0.7372881355932204,
-            "macro_f1": 0.5658873713137279,
+            "macro_f1": 0.5658873713137278,
             "cohen_kappa": 0.6460913312693499,
             "refusal_rate": 0.0,
             "schema_failure_rate": 0.0,
@@ -650,6 +651,16 @@
           }
         }
       },
+      "condition_effects": {
+        "retrieval - no_retrieval": {
+          "n": 232,
+          "estimate": 0.1939655172413793,
+          "ci95": [
+            0.12931034482758622,
+            0.2543103448275862
+          ]
+        }
+      },
       "retrieval_effect": {
         "n": 232,
         "estimate": 0.1939655172413793,
@@ -693,7 +704,7 @@
             "n": 236,
             "accuracy": 0.3559322033898305,
             "macro_f1": 0.304994400538955,
-            "cohen_kappa": 0.21208926374978032,
+            "cohen_kappa": 0.21208926374978038,
             "refusal_rate": 0.0,
             "schema_failure_rate": 0.0,
             "mean_confidence": 0.8752542372881356,
@@ -782,7 +793,7 @@
             "n": 118,
             "accuracy": 0.4491525423728814,
             "macro_f1": 0.4388888888888889,
-            "cohen_kappa": 0.3049388309922973,
+            "cohen_kappa": 0.30493883099229724,
             "refusal_rate": 0.0,
             "schema_failure_rate": 0.0,
             "mean_confidence": 0.8809322033898302,
@@ -870,8 +881,8 @@
           "pre": {
             "n": 118,
             "accuracy": 0.2627118644067797,
-            "macro_f1": 0.2044324813558548,
-            "cohen_kappa": 0.12293891499359252,
+            "macro_f1": 0.20443248135585476,
+            "cohen_kappa": 0.12293891499359248,
             "refusal_rate": 0.0,
             "schema_failure_rate": 0.0,
             "mean_confidence": 0.8695762711864405,
@@ -1080,7 +1091,7 @@
             "n": 118,
             "accuracy": 0.6779661016949152,
             "macro_f1": 0.5381274040716765,
-            "cohen_kappa": 0.5776186887716654,
+            "cohen_kappa": 0.5776186887716653,
             "refusal_rate": 0.0,
             "schema_failure_rate": 0.0,
             "mean_confidence": 0.8997457627118645,
@@ -1285,6 +1296,16 @@
           }
         }
       },
+      "condition_effects": {
+        "retrieval - no_retrieval": {
+          "n": 236,
+          "estimate": 0.3135593220338983,
+          "ci95": [
+            0.23728813559322035,
+            0.3855932203389831
+          ]
+        }
+      },
       "retrieval_effect": {
         "n": 236,
         "estimate": 0.3135593220338983,
@@ -1416,7 +1437,7 @@
           "post": {
             "n": 15,
             "accuracy": 0.7333333333333333,
-            "macro_f1": 0.6441558441558443,
+            "macro_f1": 0.6441558441558441,
             "cohen_kappa": 0.6491228070175438,
             "refusal_rate": 0.0,
             "schema_failure_rate": 0.0,

@@ -23,7 +23,7 @@ models:
     max_attempts: 4
     # Free tier: 30 RPM, 1K RPD, 8K TPM, 200K TPD (console, 2026-11-09)
     budget: {daily_requests: 900, daily_tokens: 185000, reserve_requests: 8,
-             reserve_tokens: 3000, min_interval_s: 9, tz: UTC}
+             reserve_tokens: 6000, min_interval_s: 9, tz: UTC}
   - name: openai/gpt-oss-20b
     provider: groq
     training_cutoff: "2024-06"
@@ -32,7 +32,7 @@ models:
     experiments: [main, stability, probes]
     max_attempts: 4
     budget: {daily_requests: 900, daily_tokens: 185000, reserve_requests: 8,
-             reserve_tokens: 3000, min_interval_s: 9, tz: UTC}
+             reserve_tokens: 6000, min_interval_s: 9, tz: UTC}
   - name: gemini-3.6-flash
     # Chosen over 3.8 Flash, which returned repeated 503 "high demand" errors on 2026-11-09.
     # Both model cards state the same cutoff.
@@ -75,6 +75,22 @@ monitoring:
 
 retrieval:
   k_examples: 5
+  # Dense neighbours, precomputed by scripts/build_dense_index.py (needs the [dense] extra).
+  dense_neighbours_path: data/processed/dense_neighbours.json.gz
+
+# Conditions added after the plan was frozen. Appended to results/plan.json by
+# scripts/extend_plan.py, after every original job, so nothing already planned moves. Each
+# re-runs the first n_items reports of the main sample (original interleaved order), so it is
+# compared with the existing conditions on exactly the same reports.
+extensions:
+  - name: dense_retrieval          # added 2026-11-10 after review: sparse vs dense retrieval
+    condition: retrieval_dense
+    models: [openai/gpt-oss-120b, openai/gpt-oss-20b]
+    n_items: 400                   # all main reports: 200 before + 200 after the cutoff
+  - name: tool_retrieval           # added 2026-11-10 after review: retrieval as a tool the model may call
+    condition: tool_retrieval
+    models: [openai/gpt-oss-120b, openai/gpt-oss-20b]
+    n_items: 200                   # first 200 main reports: 100 before + 100 after
 
 prompt:
   max_narrative_words: 500       # trims 8.9% of narratives

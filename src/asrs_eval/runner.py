@@ -25,7 +25,7 @@ import pandas as pd
 
 from . import agent
 from .providers import Provider
-from .retrieve import Retriever
+from .retrieve import DenseRetriever, Retriever
 
 DONE = {"ok", "ok_after_retry", "refusal"}
 
@@ -90,6 +90,39 @@ def build_plan(cfg: dict, df: pd.DataFrame) -> list[dict]:
     keys = [j["key"] for j in jobs]
     assert len(keys) == len(set(keys)), "duplicate job keys"
     return jobs
+
+
+def extension_jobs(cfg: dict, jobs: list[dict]) -> list[dict]:
+    """Jobs added after the plan was frozen (cfg["extensions"]). Each extension re-runs the
+    first n reports of a model's main sample, in the original interleaved order, under a new
+    condition, so new conditions are compared with the old ones on exactly the same reports."""
+    out = []
+    for ext in cfg.get("extensions", []):
+        for model in ext["models"]:
+            items, seen = [], set()
+            for j in jobs:
+                if j["model"] == model and j["experiment"] == "main" and j["acn"] not in seen:
+                    seen.add(j["acn"]); items.append(j)
+            for j in items[:ext["n_items"]]:
+                out.append({**j, "key": f"main|{model}|{j['acn']}|{ext['condition']}|-|0",
+                            "condition": ext["condition"], "extension": ext["name"]})
+    return out
+
+
+def extend_plan(path: Path, cfg: dict) -> int:
+    """Append any configured extension jobs not yet in the frozen plan. Existing jobs are never
+    reordered or changed. Returns how many jobs were added."""
+    plan = json.loads(path.read_text())
+    have = {j["key"] for j in plan["jobs"]}
+    new = [j for j in extension_jobs(cfg, plan["jobs"]) if j["key"] not in have]
+    if new:
+        plan["jobs"] += new
+        plan["n_jobs"] = len(plan["jobs"])
+        plan.setdefault("extensions_applied", []).append(
+            {"when": datetime.now().isoformat(timespec="seconds"), "added": len(new),
+             "names": sorted({j["extension"] for j in new})})
+        path.write_text(json.dumps(plan, indent=1))
+    return len(new)
 
 
 def load_or_build_plan(path: Path, cfg: dict, df: pd.DataFrame) -> list[dict]:
@@ -182,7 +215,12 @@ class Budget:
         return True
 
 
-def run_model(model_cfg: dict, jobs: list[dict], df: pd.DataFrame, retriever: Retriever,
+# condition -> (retriever key, model decides via the tool?)
+CONDITIONS = {"no_retrieval": (None, False), "retrieval": ("sparse", False),
+              "retrieval_dense": ("dense", False), "tool_retrieval": ("sparse", True)}
+
+
+def run_model(model_cfg: dict, jobs: list[dict], df: pd.DataFrame, retriever,
               cfg: dict, trace_dir: Path, *, provider: Provider | None = None,
               deadline: float | None = None, max_jobs: int | None = None,
               stop_after_errors: int = 3, log=print, sleep=time.sleep) -> dict:
@@ -196,6 +234,7 @@ def run_model(model_cfg: dict, jobs: list[dict], df: pd.DataFrame, retriever: Re
     provider = provider or from_config(model_cfg)
     rows = df.set_index("acn")
     pcfg = cfg["prompt"]
+    retrievers = retriever if isinstance(retriever, dict) else {"sparse": retriever}
     stats = {"model": name, "ran": 0, "errors": 0, "pending_before": len(todo), "stopped": "done"}
     consecutive_errors, last = 0, 0.0
 
@@ -211,9 +250,10 @@ def run_model(model_cfg: dict, jobs: list[dict], df: pd.DataFrame, retriever: Re
             sleep(wait)
         last = time.time()
         row = rows.loc[j["acn"]]
+        rkey, tool = CONDITIONS[j["condition"]]
         res = agent.classify(
             j["acn"], row["narrative"], provider, condition=j["condition"],
-            retriever=retriever if j["condition"] == "retrieval" else None,
+            retriever=retrievers[rkey] if rkey else None, tool=tool,
             k=cfg["retrieval"]["k_examples"], max_words=pcfg["max_narrative_words"],
             temperature=cfg["temperature"], max_tokens=pcfg["max_tokens"], probe=j["probe"])
         rec = {**j, **json.loads(res.to_json()), "human_label": row["label"],
@@ -241,7 +281,13 @@ def run_model(model_cfg: dict, jobs: list[dict], df: pd.DataFrame, retriever: Re
 
 def run_all(cfg: dict, jobs: list[dict], df: pd.DataFrame, trace_dir: Path,
             models: list[str] | None = None, **kw) -> list[dict]:
-    retriever = Retriever(df[df["split"] == "train"])
+    train = df[df["split"] == "train"]
+    retriever = {"sparse": Retriever(train)}
+    dense_path = Path(cfg["retrieval"].get("dense_neighbours_path", ""))
+    if not dense_path.is_absolute():
+        dense_path = Path(__file__).resolve().parents[2] / dense_path
+    if dense_path.is_file():
+        retriever["dense"] = DenseRetriever(train, dense_path)
     chosen = [m for m in cfg["models"] if models is None or m["name"] in models]
     results, threads = [], []
 

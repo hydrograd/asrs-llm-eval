@@ -21,6 +21,8 @@ dependencies = [
 llm = ["groq>=0.9", "google-genai>=1.0"]
 app = ["streamlit>=1.35"]
 dev = ["pytest>=8.0"]
+# Only for scripts/build_dense_index.py; the runner reads its committed output.
+dense = ["sentence-transformers>=5.0", "torch>=2.4"]
 
 [tool.setuptools.packages.find]
 where = ["src"]

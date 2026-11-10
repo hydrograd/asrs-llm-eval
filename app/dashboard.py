@@ -41,7 +41,13 @@ def figure(num, name, caption):
         st.info(f"Figure {num} appears once enough data has been collected.")
 
 
-def table(num, caption, df):
+_TABLES = [0]
+
+
+def table(_num, caption, df):
+    """Tables are numbered in the order they appear, so adding one never breaks the sequence."""
+    _TABLES[0] += 1
+    num = _TABLES[0]
     st.markdown(f"<p style='font-size:0.88rem; margin-bottom:0.2rem'><b>Table {num}.</b> "
                 f"{caption}</p>", unsafe_allow_html=True)
     st.dataframe(df, hide_index=True, width="stretch")
@@ -103,9 +109,11 @@ if b:
 # ------------------------------------------------------------------------ 2 agreement
 section("agreement", "2  Agreement with analysts")
 figure(1, "accuracy.png",
-       "Accuracy against the ASRS analyst's code, (a) without and (b) with five retrieved, "
-       "already-coded similar reports in the prompt. Lines are 95% bootstrap CIs; diamonds and "
-       "ticks are the two baselines scored on exactly the same reports.")
+       "Accuracy against the ASRS analyst's code for each model and condition: no retrieval; "
+       "five similar already-coded reports in the prompt, found by TF-IDF (sparse) or by "
+       "sentence embeddings (dense); or retrieval offered as a tool the model may call. Lines are "
+       "95% bootstrap CIs; diamonds and ticks are the two baselines scored on exactly the same "
+       "reports as each row.")
 rows = []
 for name, m in models.items():
     for cond, e in m.get("main", {}).items():
@@ -118,10 +126,48 @@ for name, m in models.items():
                      "macro-F1": round(a["macro_f1"], 3), "κ": round(a["cohen_kappa"], 3)})
 if rows:
     table(2, "Agreement by model and condition.", pd.DataFrame(rows))
-eff = [(n, m["retrieval_effect"]) for n, m in models.items() if "retrieval_effect" in m]
-if eff:
-    table(3, "Retrieval effect: accuracy with minus without retrieval, same reports (paired bootstrap).",
-          pd.DataFrame([{"model": n, "n": e["n"], "change [95% CI]": ci(e)} for n, e in eff]))
+PAIR_LABEL = {"retrieval - no_retrieval": "sparse retrieval vs none",
+              "retrieval_dense - no_retrieval": "dense retrieval vs none",
+              "retrieval_dense - retrieval": "dense vs sparse retrieval",
+              "tool_retrieval - no_retrieval": "retrieval as a tool vs none",
+              "tool_retrieval - retrieval": "retrieval as a tool vs always retrieving"}
+rows = [{"model": n, "comparison": PAIR_LABEL.get(k, k), "n": e["n"], "accuracy change [95% CI]": ci(e)}
+        for n, m in models.items() for k, e in (m.get("condition_effects") or {}).items()]
+if rows:
+    table(3, "Condition effects: accuracy difference on exactly the reports both conditions ran "
+             "on (paired bootstrap).", pd.DataFrame(rows))
+
+rq = res.get("retrieval_quality")
+if rq:
+    st.markdown(
+        f"**Retrieval quality without any LLM.** For all {rq['n_test_reports']:,} test reports: how "
+        f"often the {rq['k']} retrieved training reports carry the same analyst code, and the "
+        f"accuracy of simply taking their majority vote. Dense model: `{rq['model']}`.")
+    rows = [{"retriever": lbl,
+             f"same code in top {rq['k']}": ci(rq[key]["label_agreement_at_k"]).lstrip("+"),
+             f"{rq['k']}-NN vote accuracy": ci(rq[key]["knn_vote_accuracy"]).lstrip("+")}
+            for key, lbl in [("sparse_tfidf", "sparse (TF-IDF)"), ("dense_embeddings", "dense (embeddings)")]]
+    table(4, "Retrieval quality on the full test pool, with 95% CIs. Dense minus sparse, paired: "
+             f"{ci(rq['dense_minus_sparse_label_agreement'])}.", pd.DataFrame(rows))
+
+rows = []
+for n, m in models.items():
+    tu = m.get("tool_usage")
+    if tu:
+        rows.append({"model": n, "n": tu["n"], "called the tool": ci(tu["share_calling_tool"]).lstrip("+"),
+                     "k requested": ", ".join(f"{k}: {v}" for k, v in tu["k_requested"].items()) or "–",
+                     "accuracy, called / not": f"{tu['accuracy_when_called'] if tu['accuracy_when_called'] is not None else '–'}"
+                                               f" (n={tu['n_called']}) / "
+                                               f"{round(tu['accuracy_when_not_called'], 3) if tu['accuracy_when_not_called'] is not None else '–'}"
+                                               f" (n={tu['n_not_called']})",
+                     "tokens / report": round(tu["tokens_per_report"])})
+if rows:
+    st.markdown(
+        "**Retrieval as a tool.** The model is offered `find_similar_reports(k)` and decides "
+        "whether to call it and how many reports to fetch; the tool returns exactly what the "
+        "always-retrieve condition shows. Accuracy split by whether it called the tool is "
+        "descriptive only: the model chose.")
+    table(5, "How each model used the retrieval tool.", pd.DataFrame(rows))
 
 # --------------------------------------------------------------------- 3 memorisation
 section("memorisation", "3  Memorisation")

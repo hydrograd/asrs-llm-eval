@@ -31,8 +31,10 @@ def main():
     tfidf_pred = dict(zip(test["acn"], tf.predict(test["narrative"])))
     majority = train["label"].value_counts().idxmax()
     bj = ROOT / "results/baselines.json"
+    rq = ROOT / "results/retrieval_quality.json"
     res = report.build(cfg, df, traces, plan, tfidf_pred, majority,
-                       json.loads(bj.read_text()) if bj.exists() else None)
+                       json.loads(bj.read_text()) if bj.exists() else None,
+                       json.loads(rq.read_text()) if rq.exists() else None)
     (ROOT / "results/results.json").write_text(json.dumps(res, indent=2))
     made = charts.all_charts(res, traces, dict(Counter(j["model"] for j in plan)),
                              ROOT / "results/charts")
@@ -56,9 +58,12 @@ def main():
                 print(f"    memorisation  pre {mem['llm_accuracy']['pre']:.3f} vs post "
                       f"{mem['llm_accuracy']['post']:.3f}  gap {fmt_ci(mem['llm_gap'])}  "
                       f"tfidf gap {fmt_ci(mem['tfidf_gap'])}  adjusted {fmt_ci(mem['adjusted_gap'])}")
-        if "retrieval_effect" in r:
-            print(f"  retrieval effect (paired, n={r['retrieval_effect']['n']}): "
-                  f"{fmt_ci(r['retrieval_effect'])}")
+        for pair, e in r.get("condition_effects", {}).items():
+            print(f"  {pair} (paired, n={e['n']}): {fmt_ci(e)}")
+        if "tool_usage" in r:
+            tu = r["tool_usage"]
+            print(f"  tool: called on {tu['share_calling_tool']['estimate']:.2f} of {tu['n']} reports, "
+                  f"k requested {tu['k_requested']}")
         nf = r.get("noise_floor", {})
         if "pairwise_disagreement" in nf:
             print(f"  noise floor: identical prompts disagree {fmt_ci(nf['pairwise_disagreement'])}")

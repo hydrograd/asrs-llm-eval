@@ -59,7 +59,7 @@ class Fake:
 
 
 class NoRetriever:
-    def top_k(self, n, k):
+    def top_k(self, n, k, acn=None):
         return pd.DataFrame({"acn": [1], "synopsis": ["s"], "primary_problem": ["Weather"],
                              "similarity": [1.0]})
 
@@ -214,3 +214,57 @@ def test_plan_complete():
     assert not runner.plan_complete(plan, [{"key": "a", "status": "ok"}], "m")
     assert runner.plan_complete(plan, [{"key": "a", "status": "ok"},
                                        {"key": "b", "status": "refusal"}], "m")
+
+
+# --- plan extensions (conditions added after the plan was frozen) -------------------
+
+EXT_CFG = {**CFG, "extensions": [
+    {"name": "dense_retrieval", "condition": "retrieval_dense", "models": ["groq-m"], "n_items": 4},
+    {"name": "tool_retrieval", "condition": "tool_retrieval", "models": ["groq-m"], "n_items": 2}]}
+
+
+def test_extension_jobs_reuse_main_reports_in_order():
+    plan = runner.build_plan(CFG, make_df())
+    ext = runner.extension_jobs(EXT_CFG, plan)
+    main_acns = []
+    for j in plan:
+        if j["model"] == "groq-m" and j["experiment"] == "main" and j["acn"] not in main_acns:
+            main_acns.append(j["acn"])
+    dense = [j for j in ext if j["condition"] == "retrieval_dense"]
+    tool = [j for j in ext if j["condition"] == "tool_retrieval"]
+    assert [j["acn"] for j in dense] == main_acns[:4] and [j["acn"] for j in tool] == main_acns[:2]
+    assert [j["side"] for j in dense] == ["pre", "post", "pre", "post"]
+    assert all(j["experiment"] == "main" for j in ext)
+
+
+def test_extend_plan_appends_without_moving_and_is_idempotent(tmp_path):
+    df, path = make_df(), tmp_path / "plan.json"
+    original = runner.load_or_build_plan(path, CFG, df)
+    assert runner.extend_plan(path, EXT_CFG) == 6
+    assert runner.extend_plan(path, EXT_CFG) == 0
+    plan = json.loads(path.read_text())
+    assert plan["jobs"][:len(original)] == original
+    assert len(plan["jobs"]) == len(original) + 6 and plan["extensions_applied"][0]["added"] == 6
+
+
+def test_conditions_route_to_the_right_retriever_and_tool(tmp_path):
+    df = make_df()
+    plan = runner.build_plan(CFG, df)
+    jobs = [j for j in runner.extension_jobs(EXT_CFG, plan)][:1] + \
+           [j for j in runner.extension_jobs(EXT_CFG, plan) if j["condition"] == "tool_retrieval"][:1]
+
+    class Tagged(NoRetriever):
+        def __init__(self, tag):
+            self.tag, self.used = tag, 0
+
+        def top_k(self, n, k, acn=None):
+            self.used += 1
+            return pd.DataFrame({"acn": [7], "synopsis": [self.tag], "primary_problem": ["Weather"],
+                                 "similarity": [1.0]})
+
+    sparse, dense, fake = Tagged("SPARSE"), Tagged("DENSE"), Fake()
+    runner.run_model(CFG["models"][0], jobs, df, {"sparse": sparse, "dense": dense}, CFG, tmp_path,
+                     provider=fake, log=lambda *_: None, sleep=lambda s: None)
+    assert "DENSE" in fake.messages[0][1]["content"] and dense.used == 1
+    # tool job: Fake answers directly without calling the tool, so sparse is offered but unused
+    assert sparse.used == 0 and "find_similar_reports" in fake.messages[1][0]["content"]

@@ -1,9 +1,10 @@
 # Do LLMs agree with expert aviation safety coders?
 
+**Live dashboard: [aviation-llm-eval.streamlit.app](https://aviation-llm-eval.streamlit.app/)**
+
 > **Status: collecting data. Every model result below is provisional.** The experiment runs
-> daily inside free-tier API limits; the charts and [`results/results.json`](results/results.json)
-> regenerate after every run. The baselines are final.
-> Progress: [`results/charts/progress.png`](results/charts/progress.png)
+> daily inside free-tier API limits; the charts, the dashboard and
+> [`results/results.json`](results/results.json) regenerate after every run. The baselines are final.
 
 NASA's [Aviation Safety Reporting System](https://asrs.arc.nasa.gov) (ASRS) is a public
 database of confidential incident narratives written by pilots, controllers and technicians. ASRS
@@ -37,11 +38,23 @@ Every LLM number is reported next to both baselines **scored on exactly the same
 
 ## Live results (provisional)
 
-![Accuracy vs baselines](results/charts/accuracy.png)
-![Memorisation](results/charts/memorisation.png)
-![Calibration](results/charts/calibration.png)
+![Figure 1](results/charts/accuracy.png)
 
-Probes and the noise floor appear once those jobs run (after the main experiment).
+**Figure 1.** Accuracy against the ASRS analyst's code, (a) without and (b) with five retrieved,
+already-coded similar reports in the prompt. Lines are 95% bootstrap CIs; diamonds and ticks are
+the two baselines scored on exactly the same reports.
+
+![Figure 2](results/charts/memorisation.png)
+
+**Figure 2.** Accuracy before the training cutoff minus after. Circles: raw gap. Squares: gap net
+of the TF-IDF baseline's gap on the same reports. n is reports before + after.
+
+![Figure 3](results/charts/calibration.png)
+
+**Figure 3.** Reliability diagrams without retrieval; dots sized by reports per confidence bin.
+Below the dashed diagonal (shaded) is overconfidence.
+
+Probe and noise-floor results appear once those jobs run, after the main experiment.
 
 ## Design
 

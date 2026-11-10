@@ -1,0 +1,41 @@
+# Dashboard theme: academic paper style, aviation palette (see src/asrs_eval/charts.py).
+[server]
+enableStaticServing = true          # serves app/static/, where the fonts live
+
+[theme]
+base = "light"
+backgroundColor = "#f8f6f0"         # paper
+secondaryBackgroundColor = "#efebe1"
+textColor = "#1a2433"               # navy ink
+primaryColor = "#2f6fa3"            # aviation blue
+linkColor = "#2f6fa3"
+borderColor = "#d9d4c7"
+baseRadius = "small"
+font = "Charis SIL, Georgia, serif"
+headingFont = "Charis SIL, Georgia, serif"
+headingFontWeights = [700, 700, 600, 600, 600, 600]
+showSidebarBorder = true
+
+[[theme.fontFaces]]
+family = "Charis SIL"
+url = "app/static/fonts/CharisSIL-Regular.ttf"
+weight = "400"
+style = "normal"
+
+[[theme.fontFaces]]
+family = "Charis SIL"
+url = "app/static/fonts/CharisSIL-Bold.ttf"
+weight = "700"
+style = "normal"
+
+[[theme.fontFaces]]
+family = "Charis SIL"
+url = "app/static/fonts/CharisSIL-Italic.ttf"
+weight = "400"
+style = "italic"
+
+[[theme.fontFaces]]
+family = "Charis SIL"
+url = "app/static/fonts/CharisSIL-BoldItalic.ttf"
+weight = "700"
+style = "italic"

@@ -18,7 +18,9 @@ This project asks three LLMs to code the same narratives and measures:
 2. **Calibration**: when a model says it is 80% sure, is it right 80% of the time?
 3. **Memorisation**: is accuracy higher on reports filed *before* the model's training cutoff
    than after it, beyond what the reports' own difficulty explains?
-4. **Retrieval**: does showing five similar, already-coded reports change the answer?
+4. **Retrieval**: does showing five similar, already-coded reports change the answer, does it
+   matter whether they are found by keywords (TF-IDF) or by sentence embeddings, and will a
+   model choose to look them up when offered retrieval as a tool?
 5. **Robustness**: do irrelevant changes to the prompt change the answer more often than simply
    asking again does?
 
@@ -59,7 +61,22 @@ of the TF-IDF baseline's gap on the same reports. n is reports before + after.
 **Figure 3.** Reliability diagrams without retrieval; dots sized by reports per confidence bin.
 Below the dashed diagonal (shaded) is overconfidence.
 
-Probe and noise-floor results appear once those jobs run, after the main experiment.
+### Retrieval quality, before any LLM (final)
+
+Over all 4,985 test reports, how often the 5 retrieved training reports carry the same analyst
+code, and the accuracy of simply taking their majority vote
+([`results/retrieval_quality.json`](results/retrieval_quality.json)):
+
+| Retriever | Same code among top 5 | 5-NN vote accuracy |
+|---|---|---|
+| Sparse (TF-IDF) | 0.549 [0.540, 0.559] | 0.644 [0.631, 0.658] |
+| Dense (bge-small embeddings) | 0.551 [0.540, 0.560] | 0.635 [0.622, 0.648] |
+
+Dense minus sparse, paired: **+0.001 [−0.006, +0.008]**. On this task, dense embeddings retrieve
+no better than keyword matching. Whether the LLMs nonetheless use dense neighbours differently is
+what the dense-retrieval condition measures.
+
+Probe, noise-floor, dense-retrieval and tool results appear as those jobs run.
 
 ## Design
 
@@ -88,7 +105,7 @@ free tier allows 20 requests a day, so it runs the memorisation comparison only,
 retrieval, on 50 reports either side of its cutoff (cut from 200 on 10 November, for schedule reasons, after 14 jobs;
 the kept sample is the first 100 jobs of the original plan, so nothing was re-sampled).
 
-### Experiments (frozen plan: [`results/plan.json`](results/plan.json), 2,700 jobs)
+### Experiments (frozen plan: [`results/plan.json`](results/plan.json), 3,900 jobs)
 
 | | gpt-oss-120b, gpt-oss-20b | gemini-3.6-flash |
 |---|---|---|
@@ -96,10 +113,25 @@ the kept sample is the first 100 jobs of the original plan, so nothing was re-sa
 | Noise floor: 20 reports × 10 identical repeats | 200 each | — |
 | Probes: jargon / label order / padding × 100 reports | 300 each | — |
 | Memorisation: 50 before + 50 after, no retrieval | — | 100 |
+| *Added 10 Nov:* dense retrieval on the same 400 main reports | 400 each | — |
+| *Added 10 Nov:* retrieval as a tool, first 200 main reports (100 + 100) | 200 each | — |
 
-- **Retrieval**: TF-IDF cosine similarity over training narratives; the five nearest reports are
-  shown as their one-line synopsis plus the analyst's code (synopses rather than narratives, to
-  fit free-tier token budgets).
+The two added conditions came from a review on 10 November. They are appended after every
+original job ([`scripts/extend_plan.py`](scripts/extend_plan.py)), so nothing already planned
+moved, and they run on the same reports as the main experiment, so every comparison is paired.
+
+- **Retrieval**: the five nearest *training* reports are shown as their one-line synopsis plus
+  the analyst's code (synopses rather than narratives, to fit free-tier token budgets).
+  - *Sparse*: TF-IDF cosine similarity over training narratives.
+  - *Dense*: cosine similarity between sentence embeddings from
+    [`BAAI/bge-small-en-v1.5`](https://huggingface.co/BAAI/bge-small-en-v1.5) (384 dimensions,
+    pinned to revision `5c38ec7`), exact search over the ~20,000 training vectors; no approximate
+    index is needed at this scale. Neighbours are precomputed by
+    [`scripts/build_dense_index.py`](scripts/build_dense_index.py) and committed, so the runner,
+    CI and Docker never load the model.
+  - *As a tool*: the model is offered `find_similar_reports(k)` (k = 1–5) and decides whether to
+    call it. The tool returns exactly what sparse retrieval shows, so the only difference from
+    always retrieving is the model's choice. Its use rate is reported with a CI.
 - **Probes** change one thing and re-run the same reports: *jargon* spells out 43 aviation
   abbreviations (ATC → air traffic control); *order* reverses the category list; *padding* appends
   a paragraph of irrelevant boilerplate. (ASRS reports are already de-identified, so the usual
@@ -125,7 +157,7 @@ the kept sample is the first 100 jobs of the original plan, so nothing was re-sa
 ```
 schema.py    Pydantic model for every answer: category, confidence in [0,1], reason
 providers.py one OpenAI-compatible client for Groq and Gemini, backoff on 429/5xx
-retrieve.py  TF-IDF retrieval from the training split only
+retrieve.py  sparse (TF-IDF) and dense (precomputed embedding) retrieval, training split only
 agent.py     retrieve -> classify -> validate -> one retry with the error fed back -> refusal
 runner.py    frozen plan, per-model daily budgets in each provider's quota timezone,
              JSONL trace of every call, resumable
@@ -139,7 +171,7 @@ by the provider, tokens, latency, raw reply, parse result, retries.
 
 | Workflow | When | What it does |
 |---|---|---|
-| [`tests.yml`](.github/workflows/tests.yml) | every push | 72 tests; builds the Docker image on a clean machine and checks the rebuilt baselines match the committed numbers |
+| [`tests.yml`](.github/workflows/tests.yml) | every push | 82 tests; builds the Docker image on a clean machine and checks the rebuilt baselines match the committed numbers |
 | [`daily.yml`](.github/workflows/daily.yml) | daily (09:23 UTC, backup 17:47) | **Collection.** Runs the next jobs in the frozen plan within each model's free quota, rebuilds results and figures, commits |
 | [`weekly.yml`](.github/workflows/weekly.yml) | Sundays (11:41 UTC, backup 19:17) | **Monitoring.** For each model whose plan is complete, re-asks a fixed panel of reports it has already answered (40 per gpt-oss model, 15 for Gemini) and compares with its original answers |
 
@@ -198,6 +230,14 @@ Written now and kept up to date, not added at the end.
 - **Provider models can change during collection.** Every trace records the model version the
   provider reported; any change will be flagged.
 - **Temperature 0 is not deterministic** on these APIs; the noise floor measures exactly how much.
+- **One small embedding model.** Dense retrieval uses bge-small (33M parameters, 512-token limit,
+  so the longest narratives are truncated when embedded). A larger or domain-tuned model might
+  retrieve better; the comparison is sparse vs *this* dense model.
+- **The tool condition's prompt differs by one sentence.** The base prompt's "Reply with only a
+  JSON object" stopped both models from ever considering the tool, even when the API required a
+  call, so in the tool condition it reads "When you give your final answer, reply with only a JSON
+  object". The tool is neither encouraged nor required. In a live check of 8 reports neither model
+  chose to call it; with an explicit instruction to use it, both called it every time.
 
 ## Data
 

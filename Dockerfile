@@ -12,7 +12,7 @@
 # Dashboard:
 #   docker run --rm -p 8501:8501 asrs-llm-eval streamlit run app/dashboard.py --server.address 0.0.0.0
 
-FROM python:3.11-slim
+FROM python:3.13-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -23,9 +23,9 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /app
 
 # Dependencies first, so code edits do not invalidate this layer.
-COPY pyproject.toml README.md ./
-COPY src/asrs_eval/__init__.py src/asrs_eval/__init__.py
-RUN pip install ".[dev,app]"
+# Exact pinned versions (requirements.lock) so results match the committed numbers.
+COPY requirements.lock app/requirements.txt ./
+RUN pip install -r requirements.lock && pip install "$(grep '^streamlit' requirements.txt)"
 
 COPY . .
 RUN pip install --no-deps -e . \

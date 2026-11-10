@@ -108,3 +108,41 @@ def test_prompt_hash_differs_with_and_without_retrieval():
     a = agent.classify(1, "n", FakeProvider([GOOD]))
     b = agent.classify(1, "n", FakeProvider([GOOD]), retriever=R())
     assert a.prompt_hash != b.prompt_hash and b.retrieved_acns == [7]
+
+
+# --- provider: JSON-mode rejections are the model's schema failures -------------------
+
+def _provider_with(responses):
+    import httpx
+    from asrs_eval.providers import Provider
+    queue = list(responses)
+
+    def handler(request):
+        status, body = queue.pop(0)
+        return httpx.Response(status, json=body)
+
+    client = httpx.Client(base_url="https://x", transport=httpx.MockTransport(handler))
+    return Provider("groq", "m", client=client, max_attempts=1)
+
+
+REJECTED = (400, {"error": {"code": "json_validate_failed", "message": "Failed to generate JSON",
+                            "failed_generation": '{"primary_problem":"Human Factors","confidence":0. nine,"reason":"x"}'}})
+OK = (200, {"model": "m", "choices": [{"message": {"content": GOOD}}],
+            "usage": {"prompt_tokens": 50, "completion_tokens": 10}})
+
+
+def test_json_mode_rejection_is_retried_with_feedback_not_an_outage():
+    r = agent.classify(1, "narrative", _provider_with([REJECTED, OK]))
+    assert r.status == "ok_after_retry" and r.schema_failures == 1
+    assert "0. nine" in r.raw_replies[0]
+
+
+def test_json_mode_rejection_twice_is_a_refusal():
+    r = agent.classify(1, "narrative", _provider_with([REJECTED, REJECTED]))
+    assert r.status == "refusal" and r.prediction is None and r.schema_failures == 2
+
+
+def test_other_400s_are_still_provider_errors():
+    bad = (400, {"error": {"code": "model_not_found", "message": "no such model"}})
+    r = agent.classify(1, "narrative", _provider_with([bad]))
+    assert r.status == "provider_error"

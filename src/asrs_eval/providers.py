@@ -69,6 +69,16 @@ class Provider:
                 latency = time.perf_counter() - t0
                 if r.status_code == 200:
                     return self._parse(r.json(), latency, attempt)
+                rejected = self._rejected_generation(r)
+                if rejected is not None:
+                    # The model DID answer, but its output was not valid JSON and the provider's
+                    # JSON mode refused to pass it through. That is the model's schema failure,
+                    # not an outage: hand back what it wrote so validation rejects it and the
+                    # agent's retry-then-refusal rule applies. Token usage is not reported here.
+                    return Reply(text=rejected, model=self.model, fingerprint=None,
+                                 prompt_tokens=0, completion_tokens=0, reasoning_tokens=0,
+                                 latency_s=latency, attempts=attempt,
+                                 raw={"rejected_by_provider_json_mode": True})
                 err = f"HTTP {r.status_code}: {r.text[:300]}"
                 if r.status_code not in RETRY_STATUS:
                     raise ProviderError(err, attempt)
@@ -83,6 +93,20 @@ class Provider:
                 delay *= 2
         raise ProviderError(f"gave up after {self.max_attempts} attempts; last: {err}",
                             self.max_attempts)
+
+    @staticmethod
+    def _rejected_generation(r: httpx.Response) -> str | None:
+        """Groq returns HTTP 400 code json_validate_failed, with the model's raw output in
+        failed_generation, when JSON mode rejects a reply. Returns that output, else None."""
+        if r.status_code != 400:
+            return None
+        try:
+            e = r.json().get("error", {})
+        except ValueError:
+            return None
+        if e.get("code") != "json_validate_failed":
+            return None
+        return str(e.get("failed_generation") or "")
 
     def _parse(self, j: dict, latency: float, attempts: int) -> Reply:
         choice = j["choices"][0]["message"]

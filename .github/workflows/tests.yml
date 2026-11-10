@@ -23,16 +23,26 @@ jobs:
           mkdir -p "$RUNNER_TEMP/out" && cp -r results/. "$RUNNER_TEMP/out/"
           docker run --rm --user "$(id -u)" -v "$RUNNER_TEMP/out:/app/results" asrs-llm-eval
           ls "$RUNNER_TEMP/out/charts"
-      - name: Committed baselines are reproduced (3 d.p.)
+      - name: Committed baselines are reproduced (every metric within 0.002)
+        # Converged fits agree across machines except for one or two near-tie predictions, which
+        # can move macro-F1 or ECE by ~0.0002; 0.002 is about 10 reports' worth of accuracy.
         run: |
           python3 - "$RUNNER_TEMP/out/baselines.json" <<'EOF'
           import json, sys
           a = json.load(open("results/baselines.json")); b = json.load(open(sys.argv[1]))
-          def r(x):
-              if isinstance(x, dict): return {k: r(v) for k, v in x.items()}
-              if isinstance(x, list): return [r(v) for v in x]
-              return round(x, 3) if isinstance(x, float) else x
-          if r(a) != r(b):
-              sys.exit(f"baselines differ:\ncommitted {r(a)}\nrebuilt   {r(b)}")
-          print("baselines reproduced:", {k: v["accuracy"] for k, v in r(b).items()})
+          def flat(d, p=""):
+              for k, v in d.items():
+                  if isinstance(v, dict): yield from flat(v, f"{p}{k}.")
+                  elif isinstance(v, list):
+                      for i, x in enumerate(v): yield f"{p}{k}[{i}]", x
+                  else: yield f"{p}{k}", v
+          fa, fb = dict(flat(a)), dict(flat(b))
+          assert fa.keys() == fb.keys(), "baseline fields differ"
+          diffs = {k: abs(fa[k] - fb[k]) for k in fa}
+          worst = max(diffs, key=diffs.get)
+          print(f"largest difference: {worst} {diffs[worst]:.6f}")
+          bad = {k: (fa[k], fb[k]) for k, d in diffs.items() if d > 0.002}
+          if bad:
+              sys.exit(f"baselines not reproduced within 0.002: {bad}")
+          print("baselines reproduced:", {k: round(v["accuracy"], 4) for k, v in b.items()})
           EOF

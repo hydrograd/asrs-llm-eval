@@ -41,7 +41,8 @@ Every LLM number is reported next to both baselines **scored on exactly the same
 *Correction, 10 November:* the TF-IDF baseline was first reported as 0.636. Its optimiser had
 stopped short of convergence, which left 29 predictions sensitive to machine-level rounding; the
 Docker reproducibility check caught it rebuilding differently on GitHub. Fitted to convergence it
-is 0.638, identical on every machine tested.
+is 0.638. Rebuilt on a clean machine it matches to within 0.001 on every metric; one or two
+near-tie predictions can still differ between machines, which CI tolerates up to 0.002.
 
 ## Live results (provisional)
 
@@ -171,7 +172,7 @@ by the provider, tokens, latency, raw reply, parse result, retries.
 
 | Workflow | When | What it does |
 |---|---|---|
-| [`tests.yml`](.github/workflows/tests.yml) | every push | 82 tests; builds the Docker image on a clean machine and checks the rebuilt baselines match the committed numbers |
+| [`tests.yml`](.github/workflows/tests.yml) | every push | 82 tests; builds the Docker image on a clean machine and checks the rebuilt baselines match the committed numbers within 0.002 |
 | [`daily.yml`](.github/workflows/daily.yml) | daily (09:23 UTC, backup 17:47) | **Collection.** Runs the next jobs in the frozen plan within each model's free quota, rebuilds results and figures, commits |
 | [`weekly.yml`](.github/workflows/weekly.yml) | Sundays (11:41 UTC, backup 19:17) | **Monitoring.** For each model whose plan is complete, re-asks a fixed panel of reports it has already answered (40 per gpt-oss model, 15 for Gemini) and compares with its original answers |
 

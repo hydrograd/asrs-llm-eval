@@ -67,16 +67,17 @@ Probes and the noise floor appear once those jobs run (after the main experiment
 Gemini's model card gives two dates, so reports from January 2025 to March 2026 are **not
 sampled** for it: "before" means before January 2025, "after" means April 2026 onwards. Gemini's
 free tier allows 20 requests a day, so it runs the memorisation comparison only, without
-retrieval, and its sample grows daily.
+retrieval, on 50 reports either side of its cutoff (cut from 200 on 10 November, for schedule reasons, after 14 jobs;
+the kept sample is the first 100 jobs of the original plan, so nothing was re-sampled).
 
-### Experiments (frozen plan: [`results/plan.json`](results/plan.json), 3,000 jobs)
+### Experiments (frozen plan: [`results/plan.json`](results/plan.json), 2,700 jobs)
 
 | | gpt-oss-120b, gpt-oss-20b | gemini-3.6-flash |
 |---|---|---|
 | Main: 200 reports before + 200 after cutoff, with and without retrieval | 800 each | — |
 | Noise floor: 20 reports × 10 identical repeats | 200 each | — |
 | Probes: jargon / label order / padding × 100 reports | 300 each | — |
-| Memorisation: 200 before + 200 after, no retrieval | — | 400 |
+| Memorisation: 50 before + 50 after, no retrieval | — | 100 |
 
 - **Retrieval**: TF-IDF cosine similarity over training narratives; the five nearest reports are
   shown as their one-line synopsis plus the analyst's code (synopses rather than narratives, to
@@ -144,7 +145,7 @@ Written now and kept up to date, not added at the end.
 - **The models are not given the ASRS coding manual**, only the category names. Lower agreement
   may partly reflect not knowing ASRS conventions rather than not understanding the incident.
 - **Free-tier sample sizes** give wide intervals: about ±10 points on each gpt-oss memorisation
-  gap and wider for Gemini. A null result means "no effect larger than the interval", not "no effect".
+  gap and about ±19 for Gemini (50 reports a side). A null result means "no effect larger than the interval", not "no effect".
 - **The difficulty control assumes** that what makes later reports harder for TF-IDF also makes
   them harder for the LLMs. A shift in category mix could affect the two differently.
 - **Dates are month-level**, so each model's cutoff month is excluded from both sides.

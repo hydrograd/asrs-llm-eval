@@ -44,7 +44,7 @@ models:
     cutoff_source: "https://deepmind.google/models/model-cards/gemini-3-6-flash/"
     extra: {reasoning_effort: low}
     # Free tier allows 20 requests/day, so Gemini runs the memorisation comparison only,
-    # without retrieval, accumulating daily.
+    # without retrieval: 50 reports before and 50 after its cutoff.
     experiments: [memorisation]
     max_attempts: 2
     # Free tier: 5 RPM, 250K TPM, 20 RPD (AI Studio, 2026-11-09); quota day is Pacific time.
@@ -61,8 +61,11 @@ experiments:
   probes:                        # each compared with main/no_retrieval on the same reports
     n_items: 100
     names: [jargon, order, padding]
-  memorisation:                  # Gemini: grows by ~16-20 reports a day
-    n_per_side: 200
+  memorisation:                  # Gemini: ~17 jobs/day on the free tier
+    # Cut from 200 to 50 on 2026-11-10 for schedule reasons (14 jobs done) so the
+    # arm finishes with the Groq models instead of in December. The 50-per-side sample is the
+    # first 100 jobs of the original plan, so no finished job was dropped or re-sampled.
+    n_per_side: 50
 
 retrieval:
   k_examples: 5

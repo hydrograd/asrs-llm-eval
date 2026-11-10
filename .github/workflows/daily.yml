@@ -6,6 +6,9 @@ name: daily-run
 on:
   schedule:
     - cron: "23 9 * * *"     # 09:23 UTC: after Groq's UTC day and Gemini's Pacific day reset
+    # Backup: GitHub can skip scheduled runs. Budgets are counted from the committed traces,
+    # so a second run on a day the first succeeded finds nothing left to spend and exits.
+    - cron: "47 17 * * *"
   workflow_dispatch:
 
 permissions:

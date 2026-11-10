@@ -29,12 +29,17 @@ Scored on all 4,985 held-out reports (95% bootstrap CIs):
 | Baseline | Accuracy | Macro-F1 | Cohen's κ | ECE |
 |---|---|---|---|---|
 | Always "Aircraft" (most common class) | 0.343 [0.330, 0.357] | 0.032 | 0.000 | 0.000* |
-| TF-IDF + logistic regression | **0.636 [0.622, 0.649]** | **0.369** | **0.526** | 0.098 |
+| TF-IDF + logistic regression | **0.638 [0.624, 0.651]** | **0.369** | **0.528** | 0.101 |
 
 \*The majority baseline states the overall class frequency as its confidence, so it is perfectly
 calibrated while being useless. Calibration is reported next to accuracy, never instead of it.
 
 Every LLM number is reported next to both baselines **scored on exactly the same reports**.
+
+*Correction, 10 November:* the TF-IDF baseline was first reported as 0.636. Its optimiser had
+stopped short of convergence, which left 29 predictions sensitive to machine-level rounding; the
+Docker reproducibility check caught it rebuilding differently on GitHub. Fitted to convergence it
+is 0.638, identical on every machine tested.
 
 ## Live results (provisional)
 

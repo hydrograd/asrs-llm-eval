@@ -63,7 +63,7 @@ with st.sidebar:
         ("baselines", "The number to beat"), ("agreement", "Agreement with analysts"),
         ("memorisation", "Memorisation"), ("calibration", "Calibration"),
         ("robustness", "Robustness"), ("reliability", "Reliability and cost"),
-        ("method", "Method")], 1)))
+        ("monitoring", "Monitoring"), ("method", "Method")], 1)))
     st.markdown("---")
     st.markdown(f"[Code, data and traces]({REPO})  \n[results.json]({REPO}/blob/main/results/results.json)")
     st.caption(f"Results generated {res['generated'].replace('T', ' ')[:16]} UTC")
@@ -193,8 +193,30 @@ if rows:
              "not in the required JSON format at the first attempt; a refusal failed again after the "
              "error was fed back and is scored as wrong.", pd.DataFrame(rows))
 
-# --------------------------------------------------------------------------- 7 method
-section("method", "7  Method")
+# ----------------------------------------------------------------------- 7 monitoring
+section("monitoring", "7  Monitoring")
+st.markdown(
+    "Once a model's planned jobs are complete, a weekly run re-asks it a fixed panel of reports it "
+    "has already answered and checks whether the answers have changed by more than the noise floor "
+    "allows, or whether the provider reports a different model version. It detects providers "
+    "silently changing a model behind the same name.")
+if any(m.get("monitoring", {}).get("weeks") for m in models.values()):
+    figure(5, "monitoring.png",
+           "Share of the weekly panel answered the same as in the original run, with 95% CIs. The "
+           "shaded band is the agreement expected from the noise floor; orange marks a drift flag.")
+    rows = []
+    for name, m in models.items():
+        for wk, w in sorted((m.get("monitoring") or {}).get("weeks", {}).items()):
+            rows.append({"model": name, "week": wk, "n": w["n"], "accuracy": round(w["accuracy"], 3),
+                         "same answer": ci(w["agreement_with_original"]),
+                         "new model version": ", ".join(w["new_versions"]) or "none",
+                         "drift": w["drift_flag"]})
+    table(7, "Weekly monitoring panel.", pd.DataFrame(rows))
+else:
+    st.info("Weekly monitoring starts once each model's planned jobs are complete.")
+
+# --------------------------------------------------------------------------- 8 method
+section("method", "8  Method")
 st.markdown(
     f"24,925 ASRS reports (January 2022 – August 2026), split 80/20 into a fixed training and test "
     f"set; models are evaluated only on test reports, and retrieval draws only from training "

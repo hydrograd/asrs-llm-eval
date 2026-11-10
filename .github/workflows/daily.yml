@@ -2,7 +2,7 @@ name: daily-run
 
 # Collection phase: each day, spend that day's free-tier allowance on the next jobs in the
 # frozen plan and commit the traces. Once the plan is complete the runner has nothing to do;
-# the weekly monitoring schedule replaces this one then.
+# weekly.yml then takes over, and this workflow exits without committing.
 on:
   schedule:
     - cron: "23 9 * * *"     # 09:23 UTC: after Groq's UTC day and Gemini's Pacific day reset
@@ -39,12 +39,14 @@ jobs:
           python scripts/run_experiment.py --status
       - name: Rebuild results.json
         run: python scripts/make_report.py
-      - name: Commit traces
+      - name: Commit if there are new traces
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # After collection completes there is nothing to run; skip the commit rather than
+          # recommitting results.json with only a new timestamp.
+          if [ -z "$(git status --porcelain -- results/traces)" ]; then echo "no new traces"; exit 0; fi
           git add results/
-          if git diff --cached --quiet; then echo "nothing new"; exit 0; fi
           git commit -m "Daily run $(date -u +%Y-%m-%d)"
           git pull --rebase origin main
           git push origin HEAD:main

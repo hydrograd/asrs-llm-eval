@@ -150,14 +150,17 @@ def build(cfg: dict, df: pd.DataFrame, traces: pd.DataFrame, plan: list[dict],
            "scoring_rules": __doc__.split("Scoring rules")[1].strip(),
            "baselines_full_test_pool": baselines_json, "models": {}}
     plan_counts = Counter(j["model"] for j in plan)
+    plan_keys = {j["key"] for j in plan if "key" in j}
 
     for m in cfg["models"]:
         name = m["name"]
         mt, md = t[t.model == name], done[done.model == name]
         r = {"provider": m["provider"], "training_cutoff": m["training_cutoff"],
              "training_cutoff_partial": m.get("training_cutoff_partial"),
-             "progress": {"done": int(len(md)), "planned": int(plan_counts[name]),
-                          "complete": bool(len(md) >= plan_counts[name])}}
+             "progress": {}}
+        n_done = int(md.key.isin(plan_keys).sum()) if plan_keys and len(md) else int(len(md))
+        r["progress"] = {"done": n_done, "planned": int(plan_counts[name]),
+                         "complete": bool(n_done >= plan_counts[name])}
         if mt.empty:
             out["models"][name] = r
             continue
@@ -206,5 +209,40 @@ def build(cfg: dict, df: pd.DataFrame, traces: pd.DataFrame, plan: list[dict],
         if "probes" in m["experiments"]:
             r["probes"] = probe_effects(md[md.experiment == "probe"],
                                         main[main.condition == "no_retrieval"], floor or {}, b)
+        mon = md[md.experiment == "monitor"]
+        if len(mon):
+            r["monitoring"] = monitoring(mon, main[main.condition == "no_retrieval"],
+                                         floor, sorted(map(str, main.provider_model.dropna().unique())), b)
         out["models"][name] = r
     return out
+
+
+def monitoring(mon: pd.DataFrame, base: pd.DataFrame, floor: dict | None, base_versions: list,
+               b: dict) -> dict:
+    """Weekly drift check. Each week re-asks a fixed panel of reports; agreement is the share of
+    answers identical to the model's original answer on the same report. Identical prompts
+    already disagree at the noise-floor rate, so drift is flagged only when agreement is clearly
+    below 1 - noise floor (CI upper bound below the floor's lower bound on agreement), or when
+    the provider reports a model version not seen in the original run."""
+    base_by = base.set_index("acn")
+    expected = None
+    if floor and "pairwise_disagreement" in floor:
+        nf = floor["pairwise_disagreement"]
+        expected = {"estimate": 1 - nf["estimate"], "lower": 1 - nf["ci95"][1]}
+    weeks = {}
+    for week, g in mon.groupby("run"):
+        g = g[g.acn.isin(base_by.index)]
+        if g.empty:
+            continue
+        same = (g.pred.fillna("__r").to_numpy()
+                == base_by.loc[g.acn].pred.fillna("__r").to_numpy()).astype(float)
+        lo, hi = M.bootstrap_ci(same, np.mean, b["n_resamples"], b["ci"], b["seed"])
+        versions = sorted(map(str, g.provider_model.dropna().unique()))
+        new_versions = [v for v in versions if v not in base_versions]
+        w = {"n": int(len(g)), "accuracy": float(g.correct.mean()),
+             "agreement_with_original": {"estimate": float(same.mean()), "ci95": [lo, hi]},
+             "versions": versions, "new_versions": new_versions,
+             "drift_flag": bool(new_versions) or bool(expected and hi < expected["lower"])}
+        weeks[str(week)] = w
+    return {"expected_agreement_from_noise_floor": expected, "weeks": weeks,
+            "any_drift": any(w["drift_flag"] for w in weeks.values())}

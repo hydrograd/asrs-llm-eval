@@ -128,21 +128,45 @@ report.py    results.json; charts.py the figures; app/dashboard.py the Streamlit
 ```
 
 Every call is traced in [`results/traces/`](results/traces/): prompt hash, model version reported
-by the provider, tokens, latency, raw reply, parse result, retries. A
-[daily GitHub Action](.github/workflows/daily.yml) runs the next batch within each model's free
-quota, rebuilds the results and commits them; [tests](.github/workflows/tests.yml) run on every push.
+by the provider, tokens, latency, raw reply, parse result, retries.
+
+### Running without me
+
+| Workflow | When | What it does |
+|---|---|---|
+| [`tests.yml`](.github/workflows/tests.yml) | every push | 72 tests; builds the Docker image on a clean machine and checks the rebuilt baselines match the committed numbers |
+| [`daily.yml`](.github/workflows/daily.yml) | daily (09:23 UTC, backup 17:47) | **Collection.** Runs the next jobs in the frozen plan within each model's free quota, rebuilds results and figures, commits |
+| [`weekly.yml`](.github/workflows/weekly.yml) | Sundays (11:41 UTC, backup 19:17) | **Monitoring.** For each model whose plan is complete, re-asks a fixed panel of reports it has already answered (40 per gpt-oss model, 15 for Gemini) and compares with its original answers |
+
+Monitoring flags **drift** when a week's agreement with the original answers is clearly below
+what the noise floor allows (the 95% CI's upper bound is under the lower bound expected from
+identical-prompt disagreement), or when the provider reports a model version not seen in the
+original run. That is how a provider silently changing a model behind the same name would show
+up. Both workflows commit only when there are new traces; a skipped or repeated run is harmless
+because budgets and weekly panels are counted from the committed traces.
 
 ## Reproduce
+
+With Docker — rebuilds the baselines, `results.json` and every figure from the committed data
+and traces, no API keys needed:
+
+```bash
+docker build -t asrs-llm-eval .
+docker run --rm -v "$PWD/results:/app/results" asrs-llm-eval
+```
+
+Or locally:
 
 ```bash
 git clone https://github.com/hydrograd/asrs-llm-eval && cd asrs-llm-eval
 pip install -e ".[dev]"
-pytest                                   # 62 tests, no network or keys needed
+pytest                                   # no network or keys needed
 python scripts/run_baselines.py          # baselines from the frozen dataset
+python scripts/make_report.py            # results.json + figures from the committed traces
 export GROQ_API_KEY=... GEMINI_API_KEY=...
 python scripts/run_experiment.py --status
 python scripts/run_experiment.py         # next batch within today's budgets
-python scripts/make_report.py            # results.json + charts
+python scripts/run_experiment.py --monitor   # this week's drift panel (completed models only)
 streamlit run app/dashboard.py
 ```
 

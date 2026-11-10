@@ -67,6 +67,12 @@ experiments:
     # first 100 jobs of the original plan, so no finished job was dropped or re-sampled.
     n_per_side: 50
 
+# Weekly drift monitoring, once a model's planned jobs are complete: re-ask a fixed panel of
+# reports it has already answered (no retrieval) and compare with its original answers.
+monitoring:
+  panel: {main: 40, memorisation: 15}   # panel = the first N reports of the model's main
+                                         # (or memorisation) sample; Gemini is limited by 20 RPD
+
 retrieval:
   k_examples: 5
 

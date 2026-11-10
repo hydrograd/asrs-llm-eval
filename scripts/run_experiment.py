@@ -3,6 +3,8 @@
     python scripts/run_experiment.py --status          # what is done / pending, spend today
     python scripts/run_experiment.py                   # run until budgets or the plan run out
     python scripts/run_experiment.py --max-minutes 50 --models openai/gpt-oss-20b
+    python scripts/run_experiment.py --monitor         # this week's drift panel, for every
+                                                       # model whose planned jobs are complete
 
 Safe to interrupt and re-run: every finished call is already in results/traces/.
 """
@@ -26,6 +28,10 @@ def main():
     ap.add_argument("--models", nargs="*")
     ap.add_argument("--max-minutes", type=float)
     ap.add_argument("--max-jobs", type=int, help="per model; for smoke tests")
+    ap.add_argument("--monitor", action="store_true",
+                    help="run this ISO week's monitoring panel instead of the plan")
+    ap.add_argument("--force-monitor", action="store_true",
+                    help="monitor even models whose plan is incomplete")
     a = ap.parse_args()
 
     cfg = yaml.safe_load((ROOT / "config/experiment.yaml").read_text())
@@ -45,7 +51,24 @@ def main():
         return
 
     deadline = time.time() + a.max_minutes * 60 if a.max_minutes else None
-    for s in runner.run_all(cfg, jobs, df, trace_dir, models=a.models, deadline=deadline,
+    models = a.models
+    if a.monitor:
+        week = runner.iso_week()
+        ready = []
+        for m in cfg["models"]:
+            if models and m["name"] not in models:
+                continue
+            tr = runner.read_traces(runner.trace_path(trace_dir, m["name"]))
+            if a.force_monitor or runner.plan_complete(jobs, tr, m["name"]):
+                ready.append(m["name"])
+            else:
+                print(f"{m['name']}: plan not complete yet, not monitoring")
+        if not ready:
+            return
+        jobs = [j for n in ready for j in runner.monitor_jobs(cfg, jobs, n, week)]
+        models = ready
+        print(f"monitoring week {week}: {len(jobs)} jobs for {ready}")
+    for s in runner.run_all(cfg, jobs, df, trace_dir, models=models, deadline=deadline,
                             max_jobs=a.max_jobs):
         print(s)
 

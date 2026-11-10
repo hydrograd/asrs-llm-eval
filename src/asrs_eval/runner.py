@@ -102,6 +102,32 @@ def load_or_build_plan(path: Path, cfg: dict, df: pd.DataFrame) -> list[dict]:
     return jobs
 
 
+def plan_complete(jobs: list[dict], traces: list[dict], model: str) -> bool:
+    return not pending([j for j in jobs if j["model"] == model], traces)
+
+
+def monitor_jobs(cfg: dict, jobs: list[dict], model: str, week: str) -> list[dict]:
+    """This week's monitoring jobs for one model: the first N reports of its main (or
+    memorisation) sample, no retrieval, keyed by ISO week so a re-run in the same week is a
+    no-op. The panel is fixed for the life of the project."""
+    for exp in ("main", "memorisation"):
+        base = [j for j in jobs if j["model"] == model and j["experiment"] == exp
+                and j["condition"] == "no_retrieval"]
+        if base:
+            break
+    else:
+        return []
+    n = cfg["monitoring"]["panel"][exp]
+    return [{**j, "key": f"monitor|{model}|{j['acn']}|no_retrieval|-|{week}",
+             "experiment": "monitor", "run": week} for j in base[:n]]
+
+
+def iso_week(ts: float | None = None) -> str:
+    d = datetime.fromtimestamp(ts if ts is not None else time.time())
+    y, w, _ = d.isocalendar()
+    return f"{y}-W{w:02d}"
+
+
 # ---------------------------------------------------------------------------- traces
 
 def trace_path(trace_dir: Path, model: str) -> Path:

@@ -10,3 +10,29 @@ jobs:
           python-version: "3.11"
       - run: pip install -e ".[dev]"
       - run: pytest -q
+
+  docker:
+    # Builds the image on a clean machine, runs its default command (tests, baselines,
+    # results.json, figures) and checks the rebuilt baselines match the committed numbers.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t asrs-llm-eval .
+      - name: Reproduce results inside the container
+        run: |
+          mkdir -p "$RUNNER_TEMP/out" && cp -r results/. "$RUNNER_TEMP/out/"
+          docker run --rm --user "$(id -u)" -v "$RUNNER_TEMP/out:/app/results" asrs-llm-eval
+          ls "$RUNNER_TEMP/out/charts"
+      - name: Committed baselines are reproduced (3 d.p.)
+        run: |
+          python3 - "$RUNNER_TEMP/out/baselines.json" <<'EOF'
+          import json, sys
+          a = json.load(open("results/baselines.json")); b = json.load(open(sys.argv[1]))
+          def r(x):
+              if isinstance(x, dict): return {k: r(v) for k, v in x.items()}
+              if isinstance(x, list): return [r(v) for v in x]
+              return round(x, 3) if isinstance(x, float) else x
+          if r(a) != r(b):
+              sys.exit(f"baselines differ:\ncommitted {r(a)}\nrebuilt   {r(b)}")
+          print("baselines reproduced:", {k: v["accuracy"] for k, v in r(b).items()})
+          EOF

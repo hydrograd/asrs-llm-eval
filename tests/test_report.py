@@ -88,3 +88,50 @@ def test_noise_floor_and_probe_comparison():
     pe = r["probes"]["padding"]
     assert pe["answer_change_rate"]["estimate"] == 0.5
     assert pe["accuracy_change"]["estimate"] == pytest.approx(-0.5)
+
+
+def test_monitoring_agreement_and_drift_flags():
+    acns = range(1, 11)
+    base = [tr(a, "pre", "Aircraft", "Aircraft") for a in acns]
+    stab = [tr(a, "pre", "Aircraft", "Aircraft", experiment="stability", run=i)
+            for a in acns for i in (1, 2, 3)]
+    wk1 = [tr(a, "pre", "Aircraft", "Aircraft", experiment="monitor", run="2026-W47") for a in acns]
+    # week 48: half the panel now answers differently
+    wk2 = [tr(a, "pre", "Aircraft" if a <= 5 else "Weather", "Aircraft", experiment="monitor",
+              run="2026-W48") for a in acns]
+    for r in wk2:
+        r["key"] += "x"
+    mon = build(base + stab + wk1 + wk2)["monitoring"]
+    # identical prompts always agreed (noise floor 0), so expected agreement is 1
+    assert mon["expected_agreement_from_noise_floor"]["estimate"] == 1.0
+    assert mon["weeks"]["2026-W47"]["agreement_with_original"]["estimate"] == 1.0
+    assert not mon["weeks"]["2026-W47"]["drift_flag"]
+    w48 = mon["weeks"]["2026-W48"]
+    assert w48["agreement_with_original"]["estimate"] == 0.5 and w48["accuracy"] == 0.5
+    assert w48["agreement_with_original"]["ci95"][1] < 1.0
+    assert w48["drift_flag"] and mon["any_drift"]
+
+
+def test_monitoring_one_change_in_two_is_not_evidence_of_drift():
+    base = [tr(1, "pre", "Aircraft", "Aircraft"), tr(2, "pre", "Weather", "Weather")]
+    stab = [tr(a, "pre", p, p, experiment="stability", run=i)
+            for a, p in [(1, "Aircraft"), (2, "Weather")] for i in (1, 2, 3)]
+    wk = [tr(1, "pre", "Aircraft", "Aircraft", experiment="monitor", run="2026-W47"),
+          tr(2, "pre", "Human Factors", "Weather", experiment="monitor", run="2026-W47")]
+    assert not build(base + stab + wk)["monitoring"]["weeks"]["2026-W47"]["drift_flag"]
+
+
+def test_monitoring_flags_a_new_model_version():
+    base = [tr(1, "pre", "Aircraft", "Aircraft")]
+    wk = [tr(1, "pre", "Aircraft", "Aircraft", experiment="monitor", run="2026-W47")]
+    wk[0]["provider_model"] = "m-v2"
+    mon = build(base + wk)["monitoring"]
+    assert mon["weeks"]["2026-W47"]["new_versions"] == ["m-v2"] and mon["any_drift"]
+
+
+def test_monitoring_jobs_do_not_count_as_progress():
+    base = [tr(1, "pre", "Aircraft", "Aircraft")]
+    wk = [tr(1, "pre", "Aircraft", "Aircraft", experiment="monitor", run="2026-W47")]
+    t = pd.DataFrame(base + wk)
+    res = report.build(CFG, DF, t, [{"model": "m", "key": base[0]["key"]}], {}, "Aircraft")
+    assert res["models"]["m"]["progress"] == {"done": 1, "planned": 1, "complete": True}

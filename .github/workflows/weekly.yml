@@ -1,0 +1,47 @@
+name: weekly-monitor
+
+# Monitoring phase: once a model's planned jobs are complete, re-ask it a fixed panel of
+# reports it has already answered and compare with its original answers (drift check).
+# Models still collecting are skipped. Jobs are keyed by ISO week, so the backup slot only
+# does work if the first run was skipped or interrupted.
+on:
+  schedule:
+    - cron: "41 11 * * 0"    # Sunday 11:41 UTC
+    - cron: "17 19 * * 0"    # Sunday 19:17 UTC, backup: GitHub can skip scheduled runs
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: experiment-run      # shared with daily-run, so the two never commit at once
+  cancel-in-progress: false
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -e ".[dev]"
+      - run: pytest -q
+      - name: Run this week's monitoring panel
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: python scripts/run_experiment.py --monitor --max-minutes 45
+      - name: Rebuild results.json and figures
+        run: python scripts/make_report.py
+      - name: Commit if there are new traces
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if [ -z "$(git status --porcelain -- results/traces)" ]; then echo "no new traces"; exit 0; fi
+          git add results/
+          git commit -m "Weekly monitoring $(date -u +%G-W%V)"
+          git pull --rebase origin main
+          git push origin HEAD:main

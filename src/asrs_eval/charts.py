@@ -242,6 +242,44 @@ def probes(res: dict, path: Path):
     return True
 
 
+# ----------------------------------------------------------------- figure: monitoring
+
+def monitoring(res: dict, path: Path):
+    """Weekly agreement with each model's original answers on a fixed panel."""
+    panels = [(n, m["monitoring"]) for n, m in res["models"].items() if m.get("monitoring", {}).get("weeks")]
+    if not panels:
+        return False
+    fig, axes = plt.subplots(1, len(panels), figsize=(2.6 * len(panels) + 0.6, 2.7), sharey=True,
+                             squeeze=False)
+    for i, (ax, (name, mon)) in enumerate(zip(axes[0], panels)):
+        weeks = sorted(mon["weeks"])
+        x = np.arange(len(weeks))
+        exp = mon.get("expected_agreement_from_noise_floor")
+        if exp:
+            ax.axhspan(exp["lower"], 1.0, color=GRID, zorder=0)
+        for xi, w in zip(x, weeks):
+            a = mon["weeks"][w]["agreement_with_original"]
+            col = ORANGE if mon["weeks"][w]["drift_flag"] else BLUE
+            ax.plot([xi, xi], a["ci95"], color=col, linewidth=1.6)
+            ax.plot(xi, a["estimate"], "o", color=col, markersize=6, markeredgecolor=PAPER,
+                    markeredgewidth=1.2, zorder=3)
+        ax.plot(x, [mon["weeks"][w]["agreement_with_original"]["estimate"] for w in weeks],
+                color=BLUE, linewidth=0.8, alpha=0.6)
+        ax.set_xticks(x, [w.split("-")[1] for w in weeks])
+        ax.set_xlim(-0.5, len(weeks) - 0.5)
+        ax.set_ylim(0, 1.02)
+        ax.yaxis.set_major_formatter(PercentFormatter(1.0, decimals=0))
+        for sp in ("top", "right"):
+            ax.spines[sp].set_visible(False)
+        ax.grid(axis="y", color=GRID, linewidth=0.6)
+        ax.tick_params(axis="y", length=3, colors=INK2)
+        ax.set_xlabel("ISO week")
+        _panel(ax, "abcd"[i], SHORT.get(name, name))
+    axes[0][0].set_ylabel("same answer as original")
+    _save(fig, path, top=0.9)
+    return True
+
+
 # ------------------------------------------------------------------- figure: progress
 
 def progress(done: dict, planned: dict, path: Path):
@@ -268,7 +306,8 @@ def all_charts(res: dict, traces, plan_counts: dict, out_dir: Path) -> list[str]
     out_dir.mkdir(parents=True, exist_ok=True)
     made = []
     for fn, fname in [(accuracy_vs_baselines, "accuracy.png"), (memorisation, "memorisation.png"),
-                      (reliability, "calibration.png"), (probes, "probes.png")]:
+                      (reliability, "calibration.png"), (probes, "probes.png"),
+                      (monitoring, "monitoring.png")]:
         if fn(res, out_dir / fname):
             made.append(fname)
     done = {n: m["progress"]["done"] for n, m in res["models"].items()}

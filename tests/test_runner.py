@@ -179,3 +179,38 @@ def test_usage_today_respects_timezone():
 def test_jargon_expansion_whole_words_only():
     assert probes.expand_jargon("ATC and the FO; FOOD stays") == \
         "air traffic control and the first officer; FOOD stays"
+
+
+# --- weekly monitoring ---------------------------------------------------------------
+
+MON_CFG = {**CFG, "monitoring": {"panel": {"main": 3, "memorisation": 2}}}
+
+
+def test_monitor_panel_is_fixed_first_reports_without_retrieval():
+    plan = runner.build_plan(MON_CFG, make_df())
+    g = runner.monitor_jobs(MON_CFG, plan, "groq-m", "2026-W47")
+    first = [j["acn"] for j in plan if j["model"] == "groq-m" and j["experiment"] == "main"
+             and j["condition"] == "no_retrieval"][:3]
+    assert [j["acn"] for j in g] == first
+    assert all(j["experiment"] == "monitor" and j["condition"] == "no_retrieval"
+               and j["run"] == "2026-W47" and j["key"].endswith("|2026-W47") for j in g)
+    assert len(runner.monitor_jobs(MON_CFG, plan, "gem-m", "2026-W47")) == 2   # memorisation panel
+
+
+def test_monitor_week_is_idempotent_and_next_week_is_new(tmp_path):
+    df = make_df()
+    plan = runner.build_plan(MON_CFG, df)
+    wk = runner.monitor_jobs(MON_CFG, plan, "groq-m", "2026-W47")
+    kw = dict(provider=Fake(), log=lambda *_: None, sleep=lambda s: None)
+    s1 = runner.run_model(MON_CFG["models"][0], wk, df, NoRetriever(), MON_CFG, tmp_path, **kw)
+    s2 = runner.run_model(MON_CFG["models"][0], wk, df, NoRetriever(), MON_CFG, tmp_path, **kw)
+    nxt = runner.monitor_jobs(MON_CFG, plan, "groq-m", "2026-W48")
+    s3 = runner.run_model(MON_CFG["models"][0], nxt, df, NoRetriever(), MON_CFG, tmp_path, **kw)
+    assert (s1["ran"], s2["ran"], s3["ran"]) == (3, 0, 3)
+
+
+def test_plan_complete():
+    plan = [{"key": "a", "model": "m"}, {"key": "b", "model": "m"}]
+    assert not runner.plan_complete(plan, [{"key": "a", "status": "ok"}], "m")
+    assert runner.plan_complete(plan, [{"key": "a", "status": "ok"},
+                                       {"key": "b", "status": "refusal"}], "m")

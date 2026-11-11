@@ -173,7 +173,7 @@ by the provider, tokens, latency, raw reply, parse result, retries.
 | Workflow | When | What it does |
 |---|---|---|
 | [`tests.yml`](.github/workflows/tests.yml) | every push | 82 tests; builds the Docker image on a clean machine and checks the rebuilt baselines match the committed numbers within 0.002 |
-| [`daily.yml`](.github/workflows/daily.yml) | daily (09:23 UTC, backup 17:47) | **Collection.** Runs the next jobs in the frozen plan within each model's free quota, rebuilds results and figures, commits |
+| [`daily.yml`](.github/workflows/daily.yml) | every 3 hours (only the first run after each quota reset does work) | **Collection.** Runs the next jobs in the frozen plan within each model's free quota, rebuilds results and figures, commits |
 | [`weekly.yml`](.github/workflows/weekly.yml) | Sundays (11:41 UTC, backup 19:17) | **Monitoring.** For each model whose plan is complete, re-asks a fixed panel of reports it has already answered (40 per gpt-oss model, 15 for Gemini) and compares with its original answers |
 
 Monitoring flags **drift** when a week's agreement with the original answers is clearly below

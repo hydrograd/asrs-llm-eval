@@ -5,10 +5,12 @@ name: daily-run
 # weekly.yml then takes over, and this workflow exits without committing.
 on:
   schedule:
-    - cron: "23 9 * * *"     # 09:23 UTC: after Groq's UTC day and Gemini's Pacific day reset
-    # Backup: GitHub can skip scheduled runs. Budgets are counted from the committed traces,
-    # so a second run on a day the first succeeded finds nothing left to spend and exits.
-    - cron: "47 17 * * *"
+    # Every 3 hours. GitHub skipped or delayed the single daily slot by 5-8 hours on 10 and 11
+    # November, so one schedule cannot be relied on. Budgets are counted from the committed
+    # traces in each provider's quota day (Groq: UTC; Gemini: Pacific, resets 08:00 UTC), so the
+    # first run that fires after a reset spends that day's allowance and every later run finds
+    # nothing left, exits, and commits nothing. Runs never overlap (concurrency group below).
+    - cron: "23 */3 * * *"
   workflow_dispatch:
 
 permissions:

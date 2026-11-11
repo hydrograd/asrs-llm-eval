@@ -228,11 +228,18 @@ Written now and kept up to date, not added at the end.
   reports processed fastest (332 and 40 reports), and they make up part of Gemini's "after" set.
 - **Narratives over 500 words are truncated** (8.9% of reports), and only the first reporter's
   narrative is used when a report has two.
+- **The retrievers and the model read different amounts of a long narrative.** The model sees at
+  most 500 words (8.9% of reports are cut). Sparse retrieval queries with the *full* narrative, so
+  for those reports part of retrieval's measured gain comes from the retriever reading text the
+  model cannot. Dense retrieval embeds at most 512 tokens (about 420 words; 13.4% of reports are
+  cut), so for long reports it reads *less* than the model. The handling is identical across
+  conditions and reports, so comparisons stay fair, but the dense-vs-sparse comparison carries
+  this asymmetry on the longest ~13% of reports.
 - **Provider models can change during collection.** Every trace records the model version the
   provider reported; any change will be flagged.
 - **Temperature 0 is not deterministic** on these APIs; the noise floor measures exactly how much.
 - **One small embedding model.** Dense retrieval uses bge-small (33M parameters, 512-token limit,
-  so the longest narratives are truncated when embedded). A larger or domain-tuned model might
+  so 13.4% of narratives are truncated when embedded). A larger or domain-tuned model might
   retrieve better; the comparison is sparse vs *this* dense model.
 - **The tool condition's prompt differs by one sentence.** The base prompt's "Reply with only a
   JSON object" stopped both models from ever considering the tool, even when the API required a

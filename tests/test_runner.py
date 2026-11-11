@@ -268,3 +268,47 @@ def test_conditions_route_to_the_right_retriever_and_tool(tmp_path):
     assert "DENSE" in fake.messages[0][1]["content"] and dense.used == 1
     # tool job: Fake answers directly without calling the tool, so sparse is offered but unused
     assert sparse.used == 0 and "find_similar_reports" in fake.messages[1][0]["content"]
+
+
+# --- interleaving pending jobs -------------------------------------------------------
+
+def _jobs():
+    orig = [{"key": f"o{i}", "model": "m"} for i in range(12)]
+    tool = [{"key": f"t{i}", "model": "m", "extension": "tool_retrieval"} for i in range(3)]
+    dense = [{"key": f"d{i}", "model": "m", "extension": "dense_retrieval"} for i in range(5)]
+    return orig + dense + tool
+
+
+SHARES = {"original": 0.6, "tool_retrieval": 0.3, "dense_retrieval": 0.1}
+
+
+def test_interleave_keeps_done_first_and_the_same_jobs():
+    jobs = _jobs()
+    out = runner.interleave_pending(jobs, {"o0", "o1"}, SHARES)
+    assert [j["key"] for j in out[:2]] == ["o0", "o1"]
+    assert sorted(j["key"] for j in out) == sorted(j["key"] for j in jobs)
+    assert out == runner.interleave_pending(jobs, {"o0", "o1"}, SHARES)       # deterministic
+
+
+def test_interleave_proportions_and_stream_order():
+    # enough jobs in every stream that none runs dry within the first 20 slots
+    jobs = ([{"key": f"o{i}", "model": "m"} for i in range(30)]
+            + [{"key": f"d{i}", "model": "m", "extension": "dense_retrieval"} for i in range(10)]
+            + [{"key": f"t{i}", "model": "m", "extension": "tool_retrieval"} for i in range(15)])
+    out = [j["key"] for j in runner.interleave_pending(jobs, set(), SHARES)]
+    for window in (out[:10], out[10:20]):
+        assert [sum(k.startswith(p) for k in window) for p in "otd"] == [6, 3, 1]
+    first10 = out[:10]
+    assert sum(k.startswith("o") for k in first10) == 6
+    assert sum(k.startswith("t") for k in first10) == 3 and sum(k.startswith("d") for k in first10) == 1
+    for p in "otd":                                                            # order kept in each stream
+        ks = [k for k in out if k.startswith(p)]
+        assert ks == sorted(ks, key=lambda k: int(k[1:]))
+
+
+def test_interleave_hands_an_empty_streams_share_on():
+    out = [j["key"] for j in runner.interleave_pending(_jobs(), set(), SHARES)]
+    last_tool = max(i for i, k in enumerate(out) if k.startswith("t"))
+    after = out[last_tool + 1:last_tool + 11]
+    # once tool is exhausted the extension share (0.4) goes to dense, so dense keeps flowing
+    assert sum(k.startswith("d") for k in after) >= 3

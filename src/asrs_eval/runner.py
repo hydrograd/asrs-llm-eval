@@ -125,6 +125,34 @@ def extend_plan(path: Path, cfg: dict) -> int:
     return len(new)
 
 
+def interleave_pending(jobs: list[dict], done_keys: set, shares: dict) -> list[dict]:
+    """Reorder one model's jobs: finished jobs first (unchanged order), then the pending jobs
+    drawn from streams in fixed proportions. Streams: "original" (every non-extension job, in
+    plan order) and one per extension name. shares maps stream -> fraction; when a stream runs
+    dry its share passes to the next stream listed after it. Deterministic; the set of jobs is
+    unchanged, only their order."""
+    done = [j for j in jobs if j["key"] in done_keys]
+    streams = {name: [] for name in shares}
+    for j in jobs:
+        if j["key"] not in done_keys:
+            streams[j.get("extension", "original")].append(j)
+    order, w = list(shares), dict(shares)
+    taken = {n: 0 for n in shares}
+    out = []
+    while any(streams.values()):
+        for i, n in enumerate(order):          # hand empty streams' shares on
+            if not streams[n] and w[n] > 0:
+                nxt = next((m for m in order[i + 1:] + order[:i] if streams[m]), None)
+                if nxt:
+                    w[nxt] += w[n]
+                w[n] = 0
+        total = len(out) + 1
+        n = max((m for m in order if streams[m]), key=lambda m: w[m] * total - taken[m])
+        out.append(streams[n].pop(0))
+        taken[n] += 1
+    return done + out
+
+
 def load_or_build_plan(path: Path, cfg: dict, df: pd.DataFrame) -> list[dict]:
     if path.exists():
         return json.loads(path.read_text())["jobs"]

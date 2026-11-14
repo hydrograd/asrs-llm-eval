@@ -218,3 +218,17 @@ def test_tool_condition_schema_failure_then_refusal():
     p, ret = ToolFake(["not json", "still not json"]), Ret()
     r = agent.classify(1, "narr", p, retriever=ret, tool=True)
     assert r.status == "refusal" and r.schema_failures == 2 and r.prediction is None
+
+
+def test_bogus_tool_call_rejection_is_a_schema_failure_then_retried():
+    # gpt-oss sometimes "calls" a tool named json to give its answer; Groq rejects it
+    bogus = (400, {"error": {"code": "tool_use_failed",
+                             "message": "attempted to call tool 'json' which was not in request.tools",
+                             "failed_generation": '{"name": "json", "arguments": {"primary_problem": "Weather"}}'}})
+
+    class R:
+        def top_k(self, n, k, acn=None):
+            raise AssertionError("tool should not run")
+
+    r = agent.classify(1, "narrative", _provider_with([bogus, OK]), retriever=R(), tool=True)
+    assert r.status == "ok_after_retry" and r.schema_failures == 1 and r.tool_calls == []

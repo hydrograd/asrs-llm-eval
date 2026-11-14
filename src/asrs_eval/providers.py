@@ -102,15 +102,17 @@ class Provider:
 
     @staticmethod
     def _rejected_generation(r: httpx.Response) -> str | None:
-        """Groq returns HTTP 400 code json_validate_failed, with the model's raw output in
-        failed_generation, when JSON mode rejects a reply. Returns that output, else None."""
+        """Groq returns HTTP 400 with the model's raw output in failed_generation when it rejects
+        what the model produced: json_validate_failed (JSON mode, invalid JSON) or
+        tool_use_failed (e.g. gpt-oss "calling" a non-existent tool named json to give its
+        answer). Both are the model's format failures. Returns that output, else None."""
         if r.status_code != 400:
             return None
         try:
             e = r.json().get("error", {})
         except ValueError:
             return None
-        if e.get("code") != "json_validate_failed":
+        if e.get("code") not in ("json_validate_failed", "tool_use_failed"):
             return None
         return str(e.get("failed_generation") or "")
 

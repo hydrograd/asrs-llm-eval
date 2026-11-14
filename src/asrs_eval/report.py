@@ -166,11 +166,11 @@ def build(cfg: dict, df: pd.DataFrame, traces: pd.DataFrame, plan: list[dict],
         if mt.empty:
             out["models"][name] = r
             continue
-        # Before 2026-11-10 a provider JSON-mode rejection (the model's own invalid JSON) was
-        # logged as a provider error; those jobs were re-run under the schema-failure rule.
+        # Before 2026-11-10 (JSON mode) and 2026-11-14 (tool calls) a provider's rejection of
+        # the model's own malformed output was logged as a provider error; those jobs were re-run under the schema-failure rule.
         # Count them apart so they do not inflate the outage figure.
         err = mt["error"].fillna("") if "error" in mt else pd.Series("", index=mt.index)
-        legacy_rej = (mt.status == "provider_error") & err.str.contains("json_validate_failed")
+        legacy_rej = (mt.status == "provider_error") & err.str.contains("json_validate_failed|tool_use_failed")
         r["reliability"] = {
             "calls": int(len(mt)),
             "provider_error_rate": float(((mt.status == "provider_error") & ~legacy_rej).mean()),

@@ -2,6 +2,12 @@
 
 **Live dashboard: [aviation-llm-eval.streamlit.app](https://aviation-llm-eval.streamlit.app/)**
 
+[![The dashboard: title, abstract, collection progress and the baselines to beat](docs/dashboard.png)](https://aviation-llm-eval.streamlit.app/)
+
+<sub>Dashboard screenshot, 14 November 2026 (layout only; the charts below and the live site carry
+current numbers). A [keep-alive job](.github/workflows/keepalive.yml) visits the site every two
+hours so it does not fall asleep; if it ever shows a sleep page, it wakes in under a minute.</sub>
+
 > **Status: collecting data. Every model result below is provisional.** The experiment runs
 > daily inside free-tier API limits; the charts, the dashboard and
 > [`results/results.json`](results/results.json) regenerate after every run. The baselines are final.
@@ -175,6 +181,7 @@ by the provider, tokens, latency, raw reply, parse result, retries.
 | [`tests.yml`](.github/workflows/tests.yml) | every push | 82 tests; builds the Docker image on a clean machine and checks the rebuilt baselines match the committed numbers within 0.002 |
 | [`daily.yml`](.github/workflows/daily.yml) | every 3 hours (only the first run after each quota reset does work) | **Collection.** Runs the next jobs in the frozen plan within each model's free quota, rebuilds results and figures, commits |
 | [`weekly.yml`](.github/workflows/weekly.yml) | Sundays (11:41 UTC, backup 19:17) | **Monitoring.** For each model whose plan is complete, re-asks a fixed panel of reports it has already answered (40 per gpt-oss model, 15 for Gemini) and compares with its original answers |
+| [`keepalive.yml`](.github/workflows/keepalive.yml) | every 2 hours | Opens the dashboard in a headless browser ([`scripts/keep_alive.js`](scripts/keep_alive.js)), clicks Streamlit's wake button if the app is asleep, and fails the run if the dashboard does not render |
 
 Monitoring flags **drift** when a week's agreement with the original answers is clearly below
 what the noise floor allows (the 95% CI's upper bound is under the lower bound expected from

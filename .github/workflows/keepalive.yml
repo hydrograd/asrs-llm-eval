@@ -1,0 +1,39 @@
+name: dashboard-keepalive
+
+# Streamlit Community Cloud puts free apps to sleep after a period without visitors, so a
+# recruiter following the CV link could land on a sleep page. Every 2 hours a headless browser
+# visits the dashboard (scripts/keep_alive.js), clicks the wake button if needed, and fails if
+# the dashboard does not render. Separate from the experiment workflows so it never delays them.
+on:
+  schedule:
+    - cron: "11 */2 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dashboard-keepalive
+  cancel-in-progress: true
+
+jobs:
+  visit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install a pinned Playwright and Chromium
+        run: |
+          npm install --no-save --no-package-lock playwright@1.63.0
+          npx playwright install --with-deps chromium
+      - name: Visit the dashboard
+        run: node scripts/keep_alive.js "https://aviation-llm-eval.streamlit.app/" keep_alive.png
+      - name: Keep the screenshot if the visit failed
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: keep-alive-failure
+          path: keep_alive.png

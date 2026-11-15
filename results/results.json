@@ -1,5 +1,5 @@
 {
-  "generated": "2026-11-15T13:11:13+00:00",
+  "generated": "2026-11-15T18:00:21+00:00",
   "scoring_rules": "(stated here because every number depends on them):\n- Predictions use the full ASRS label set; they are folded into \"Other\" with the same\n  rare-class mapping as the human labels before comparison.\n- A refusal (schema failed twice) counts as WRONG in accuracy, macro-F1 and kappa, and is\n  excluded from calibration (it has no confidence). Refusal rates are reported separately.\n- Provider errors are not results: those jobs are still pending and are reported only as\n  an availability figure.\n- Baselines are scored on exactly the same reports as each model result.\n- Memorisation = accuracy(before cutoff) - accuracy(after cutoff), different reports, so an\n  unpaired bootstrap. Because the \"after\" reports could simply be harder, the same gap is\n  computed for the TF-IDF baseline (which cannot have memorised anything) and subtracted:\n  the adjusted gap is the LLM's drop beyond what the reports' difficulty explains.\n- Retrieval and probe effects compare the same reports, so a paired bootstrap.\n- The noise floor is how often an identical prompt gets a different answer; every probe's\n  answer-change rate is compared with it.",
   "baselines_full_test_pool": {
     "majority": {
@@ -102,7 +102,7 @@
           "all": {
             "n": 400,
             "accuracy": 0.5175,
-            "macro_f1": 0.3401098474302428,
+            "macro_f1": 0.3401098474302429,
             "cohen_kappa": 0.38279994563522834,
             "refusal_rate": 0.0,
             "schema_failure_rate": 0.0075,
@@ -192,7 +192,7 @@
             "n": 200,
             "accuracy": 0.555,
             "macro_f1": 0.45098347275859213,
-            "cohen_kappa": 0.4308007162957278,
+            "cohen_kappa": 0.43080071629572786,
             "refusal_rate": 0.0,
             "schema_failure_rate": 0.005,
             "mean_confidence": 0.8305,
@@ -578,7 +578,7 @@
           "pre": {
             "n": 200,
             "accuracy": 0.695,
-            "macro_f1": 0.31761267010135785,
+            "macro_f1": 0.3176126701013579,
             "cohen_kappa": 0.5582431111272042,
             "refusal_rate": 0.0,
             "schema_failure_rate": 0.005,
@@ -699,7 +699,7 @@
             "n": 262,
             "accuracy": 0.7022900763358778,
             "macro_f1": 0.48440486741662503,
-            "cohen_kappa": 0.5913208679132086,
+            "cohen_kappa": 0.5913208679132087,
             "refusal_rate": 0.0,
             "schema_failure_rate": 0.011450381679389313,
             "mean_confidence": 0.8702671755725191,
@@ -876,7 +876,7 @@
           "pre": {
             "n": 131,
             "accuracy": 0.6870229007633588,
-            "macro_f1": 0.48572676025947065,
+            "macro_f1": 0.48572676025947054,
             "cohen_kappa": 0.5671341070277242,
             "refusal_rate": 0.0,
             "schema_failure_rate": 0.022900763358778626,
@@ -996,7 +996,7 @@
           "all": {
             "n": 200,
             "accuracy": 0.545,
-            "macro_f1": 0.38337651743163553,
+            "macro_f1": 0.3833765174316355,
             "cohen_kappa": 0.4126379655328213,
             "refusal_rate": 0.0,
             "schema_failure_rate": 0.0,
@@ -1476,7 +1476,7 @@
           "all": {
             "n": 400,
             "accuracy": 0.3475,
-            "macro_f1": 0.26124011237994255,
+            "macro_f1": 0.2612401123799425,
             "cohen_kappa": 0.19755268942829468,
             "refusal_rate": 0.0,
             "schema_failure_rate": 0.0,
@@ -1565,7 +1565,7 @@
           "post": {
             "n": 200,
             "accuracy": 0.43,
-            "macro_f1": 0.3972997231370437,
+            "macro_f1": 0.39729972313704365,
             "cohen_kappa": 0.28125591072441836,
             "refusal_rate": 0.0,
             "schema_failure_rate": 0.0,
@@ -1654,8 +1654,8 @@
           "pre": {
             "n": 200,
             "accuracy": 0.265,
-            "macro_f1": 0.1689290826203904,
-            "cohen_kappa": 0.11724966221288098,
+            "macro_f1": 0.16892908262039041,
+            "cohen_kappa": 0.117249662212881,
             "refusal_rate": 0.0,
             "schema_failure_rate": 0.0,
             "mean_confidence": 0.86945,
@@ -1774,7 +1774,7 @@
           "all": {
             "n": 400,
             "accuracy": 0.68,
-            "macro_f1": 0.37911963397814524,
+            "macro_f1": 0.3791196339781452,
             "cohen_kappa": 0.5603414223641954,
             "refusal_rate": 0.0,
             "schema_failure_rate": 0.0,
@@ -1953,7 +1953,7 @@
             "n": 200,
             "accuracy": 0.695,
             "macro_f1": 0.2537866405143293,
-            "cohen_kappa": 0.5574097587520406,
+            "cohen_kappa": 0.5574097587520407,
             "refusal_rate": 0.0,
             "schema_failure_rate": 0.0,
             "mean_confidence": 0.9103,
@@ -2072,7 +2072,7 @@
           "all": {
             "n": 260,
             "accuracy": 0.676923076923077,
-            "macro_f1": 0.4079138255028616,
+            "macro_f1": 0.4079138255028615,
             "cohen_kappa": 0.5534838076545633,
             "refusal_rate": 0.0,
             "schema_failure_rate": 0.0,
@@ -2161,7 +2161,7 @@
           "post": {
             "n": 130,
             "accuracy": 0.676923076923077,
-            "macro_f1": 0.4024131896472322,
+            "macro_f1": 0.4024131896472323,
             "cohen_kappa": 0.5585024662408022,
             "refusal_rate": 0.0,
             "schema_failure_rate": 0.0,
@@ -2370,8 +2370,8 @@
           "all": {
             "n": 200,
             "accuracy": 0.385,
-            "macro_f1": 0.2985572260447104,
-            "cohen_kappa": 0.2509135200974421,
+            "macro_f1": 0.29855722604471036,
+            "cohen_kappa": 0.25091352009744217,
             "refusal_rate": 0.0,
             "schema_failure_rate": 0.0,
             "mean_confidence": 0.8638499999999999,
@@ -2833,16 +2833,16 @@
         "complete": true
       },
       "reliability": {
-        "calls": 104,
-        "provider_error_rate": 0.038461538461538464,
+        "calls": 109,
+        "provider_error_rate": 0.03669724770642202,
         "legacy_json_mode_rejections": 0,
         "schema_failure_rate": 0.0,
         "refusal_rate": 0.0
       },
       "cost_per_item": {
-        "prompt_tokens": 513.46,
-        "completion_tokens": 56.98,
-        "latency_s": 9.289535655760004
+        "prompt_tokens": 511.81904761904764,
+        "completion_tokens": 56.714285714285715,
+        "latency_s": 9.502840617847621
       },
       "provider_model_versions": [
         "gemini-3.6-flash"
@@ -2852,7 +2852,7 @@
           "all": {
             "n": 100,
             "accuracy": 0.72,
-            "macro_f1": 0.48982030627600254,
+            "macro_f1": 0.4898203062760025,
             "cohen_kappa": 0.6174340756934007,
             "refusal_rate": 0.0,
             "schema_failure_rate": 0.0,
@@ -3146,6 +3146,28 @@
             }
           }
         }
+      },
+      "monitoring": {
+        "expected_agreement_from_noise_floor": null,
+        "weeks": {
+          "2026-W46": {
+            "n": 5,
+            "accuracy": 0.8,
+            "agreement_with_original": {
+              "estimate": 0.8,
+              "ci95": [
+                0.4,
+                1.0
+              ]
+            },
+            "versions": [
+              "gemini-3.6-flash"
+            ],
+            "new_versions": [],
+            "drift_flag": false
+          }
+        },
+        "any_drift": false
       }
     }
   }

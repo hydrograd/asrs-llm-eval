@@ -163,3 +163,14 @@ def test_tool_usage_summary():
     assert tu["n"] == 2 and tu["share_calling_tool"]["estimate"] == 0.5
     assert tu["k_requested"] == {3: 1}
     assert tu["accuracy_when_called"] == 1.0 and tu["accuracy_when_not_called"] == 0.0
+
+
+def test_error_analysis_counts_confusions_and_usage():
+    rows = [tr(1, "pre", "Weather", "Aircraft"), tr(2, "pre", "Weather", "Aircraft"),
+            tr(3, "post", "Aircraft", "Aircraft"), tr(4, "post", "Aircraft", "Human Factors")]
+    ea = build(rows)["error_analysis"]["no_retrieval"]
+    assert ea["n"] == 4 and ea["n_errors"] == 3
+    assert ea["top_confusions"][0] == {"analyst": "Aircraft", "model": "Weather", "count": 2,
+                                       "share_of_errors": pytest.approx(2 / 3)}
+    assert ea["category_usage"]["Aircraft"] == {"analyst_share": 0.75, "model_share": 0.5}
+    assert ea["category_usage"]["Weather"]["analyst_share"] == 0.0

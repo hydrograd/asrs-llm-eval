@@ -91,6 +91,10 @@ extensions:
     condition: tool_retrieval
     models: [openai/gpt-oss-120b, openai/gpt-oss-20b]
     n_items: 200                   # first 200 main reports: 100 before + 100 after
+  - name: padding_neutral          # added 2026-11-16: the original padding names four categories
+    probe: padding_neutral
+    models: [openai/gpt-oss-120b, openai/gpt-oss-20b]
+    n_items: 100                   # the same 100 reports as the other probes
 
 prompt:
   max_narrative_words: 500       # trims 8.9% of narratives

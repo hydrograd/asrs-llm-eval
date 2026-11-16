@@ -5,7 +5,9 @@ compared, report by report, with the unprobed run on the same reports.
            on surface vocabulary rather than the event? (Stands in for the spec's
            name-anonymisation probe: ASRS reports are already de-identified.)
 - order:   present the allowed labels in reverse order. Positional artefacts.
-- padding: append on-topic but uninformative boilerplate. Is it swayed by volume?
+- padding: append on-topic boilerplate. It turned out to name four categories, so it measures
+           steering by category words rather than distraction by volume.
+- padding_neutral: the same length of boilerplate with no category words (added later).
 
 Stability (the noise floor) is not a probe: it repeats the unprobed prompt unchanged.
 """
@@ -52,7 +54,21 @@ PADDING = (
     "as required."
 )
 
-PROBES = ("jargon", "order", "padding")
+# Added 2026-11-16. PADDING above turned out not to be uninformative: it names four categories
+# ("procedures, aircraft systems, airports and weather") and shifted predictions towards
+# Aircraft. PADDING_NEUTRAL is the same length and register but contains no word that names,
+# or is part of the name of, any Primary Problem value (checked by a test).
+PADDING_NEUTRAL = (
+    "\n\nAdditional context: This account was submitted voluntarily to a confidential reporting "
+    "programme. Submissions are read by trained analysts, stripped of identifying details and "
+    "kept in a public archive that researchers and the wider community can search. Writers are "
+    "asked to describe what happened in their own words, how it came to their attention, what "
+    "they did next and what they think might stop it happening again. Accounts vary a great deal "
+    "in length and in level of detail; some are written within hours of the event and others "
+    "several days later, after the writer has had time to think it over."
+)
+
+PROBES = ("jargon", "order", "padding", "padding_neutral")
 
 
 def expand_jargon(text: str) -> str:
@@ -69,4 +85,6 @@ def apply(probe: str | None, narrative: str) -> tuple[str, list[str]]:
         return narrative, list(reversed(PRIMARY_PROBLEMS))
     if probe == "padding":
         return narrative + PADDING, PRIMARY_PROBLEMS
+    if probe == "padding_neutral":
+        return narrative + PADDING_NEUTRAL, PRIMARY_PROBLEMS
     raise ValueError(f"unknown probe {probe!r}")

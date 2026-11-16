@@ -312,3 +312,35 @@ def test_interleave_hands_an_empty_streams_share_on():
     after = out[last_tool + 1:last_tool + 11]
     # once tool is exhausted the extension share (0.4) goes to dense, so dense keeps flowing
     assert sum(k.startswith("d") for k in after) >= 3
+
+
+# --- neutral padding probe -----------------------------------------------------------
+
+def test_neutral_padding_names_no_category():
+    import re as _re
+    from asrs_eval.schema import PRIMARY_PROBLEMS
+    generic = {"or", "and", "not", "non"}
+    cat_words = {w.lower() for p in PRIMARY_PROBLEMS for w in _re.findall(r"[A-Za-z]+", p)} - generic
+    words = _re.findall(r"[a-z]+", probes.PADDING_NEUTRAL.lower())
+    # whole words and plurals/derivatives (e.g. "procedures", "manual") both count
+    hits = sorted({w for w in words for c in cat_words if w == c or (len(c) >= 4 and w.startswith(c[:-1]))})
+    assert hits == [], hits
+    # the original padding does name categories, which is why the neutral one exists
+    orig = _re.findall(r"[a-z]+", probes.PADDING.lower())
+    assert {"aircraft", "airports", "weather", "procedures"} <= set(orig)
+
+
+def test_neutral_padding_matches_original_length():
+    n_orig, n_new = len(probes.PADDING.split()), len(probes.PADDING_NEUTRAL.split())
+    assert abs(n_new - n_orig) <= 0.1 * n_orig, (n_orig, n_new)
+
+
+def test_probe_extension_reuses_the_probe_reports():
+    plan = runner.build_plan(CFG, make_df())
+    cfg = {**CFG, "extensions": [{"name": "padding_neutral", "probe": "padding_neutral",
+                                  "models": ["groq-m"], "n_items": 2}]}
+    ext = runner.extension_jobs(cfg, plan)
+    probe_acns = list(dict.fromkeys(j["acn"] for j in plan if j["model"] == "groq-m" and j["experiment"] == "probe"))
+    assert [j["acn"] for j in ext] == probe_acns[:2]
+    assert all(j["experiment"] == "probe" and j["probe"] == "padding_neutral"
+               and j["condition"] == "no_retrieval" and j["key"].startswith("probe|") for j in ext)

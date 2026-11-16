@@ -83,6 +83,24 @@ Dense minus sparse, paired: **+0.001 [−0.006, +0.008]**. On this task, dense e
 no better than keyword matching. Whether the LLMs nonetheless use dense neighbours differently is
 what the dense-retrieval condition measures.
 
+### Error analysis (provisional)
+
+Without retrieval, a large share of the gpt-oss models' errors is a single confusion: they assign
+**Equipment / Tooling** to reports the analysts coded **Aircraft**. In the ASRS taxonomy that
+category covers tools and ground equipment; analysts use it for 87 of 24,925 reports (0.35%).
+
+| Without retrieval | Predicts Equipment / Tooling | On analyst-coded Aircraft reports | Share of its errors |
+|---|---|---|---|
+| gpt-oss-120b | 12% of reports | Aircraft 50%, Equipment / Tooling 23% | 24% |
+| gpt-oss-20b | 24% of reports | Aircraft 7%, Equipment / Tooling 48% | 37% |
+| gemini-3.6-flash | 0% | Aircraft 93% | – |
+
+With five retrieved examples the confusion largely disappears (Equipment / Tooling falls to 1–3%
+of answers), which suggests part of retrieval's +19 to +33 point gain comes from conveying ASRS's
+coding conventions rather than facts about the incident. Gemini's most common error is different:
+answering *Human Factors* where the analyst coded *Ambiguous*. The per-model breakdown is in
+[`results/results.json`](results/results.json) (`error_analysis`) and on the dashboard.
+
 Probe, noise-floor, dense-retrieval and tool results appear as those jobs run.
 
 ## Design
@@ -112,7 +130,7 @@ free tier allows 20 requests a day, so it runs the memorisation comparison only,
 retrieval, on 50 reports either side of its cutoff (cut from 200 on 10 November, for schedule reasons, after 14 jobs;
 the kept sample is the first 100 jobs of the original plan, so nothing was re-sampled).
 
-### Experiments (frozen plan: [`results/plan.json`](results/plan.json), 3,900 jobs)
+### Experiments (frozen plan: [`results/plan.json`](results/plan.json), 4,100 jobs)
 
 | | gpt-oss-120b, gpt-oss-20b | gemini-3.6-flash |
 |---|---|---|
@@ -122,6 +140,7 @@ the kept sample is the first 100 jobs of the original plan, so nothing was re-sa
 | Memorisation: 50 before + 50 after, no retrieval | — | 100 |
 | *Added 10 Nov:* dense retrieval on the same 400 main reports | 400 each | — |
 | *Added 10 Nov:* retrieval as a tool, first 200 main reports (100 + 100) | 200 each | — |
+| *Added 16 Nov:* neutral padding probe, same 100 probe reports | 100 each | — |
 
 The two added conditions came from a review on 10 November. They are appended after every
 original job ([`scripts/extend_plan.py`](scripts/extend_plan.py)), so nothing already planned
@@ -141,8 +160,15 @@ moved, and they run on the same reports as the main experiment, so every compari
     always retrieving is the model's choice. Its use rate is reported with a CI.
 - **Probes** change one thing and re-run the same reports: *jargon* spells out 43 aviation
   abbreviations (ATC → air traffic control); *order* reverses the category list; *padding* appends
-  a paragraph of irrelevant boilerplate. (ASRS reports are already de-identified, so the usual
+  a paragraph of generic text. (ASRS reports are already de-identified, so the usual
   name-anonymisation probe does not apply.)
+  - *Correction, 16 November:* the original padding paragraph was meant to be uninformative but
+    names four categories ("procedures, aircraft systems, airports and weather"). It shifted
+    gpt-oss-120b's answers towards *Aircraft* (6 → 14 of 45 reports), which is where its apparent
+    +0.22 accuracy gain came from. It is kept and reported as **padding with category terms**: a
+    test of whether incidental category words steer the answer. A second **neutral padding**
+    paragraph of the same length, checked by a test to contain no category word, measures the
+    effect of added text alone on the same 100 reports.
 - **Noise floor**: how often two identical prompts at temperature 0 give different answers. A
   probe only matters if it changes answers more often than that.
 

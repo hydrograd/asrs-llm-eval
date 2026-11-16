@@ -197,6 +197,7 @@ def build(cfg: dict, df: pd.DataFrame, traces: pd.DataFrame, plan: list[dict],
             entry["memorisation"] = memorisation(g, b)
             r["main"][cond] = entry
 
+        r["error_analysis"] = {cond: error_analysis(g) for cond, g in main.groupby("condition")}
         effects = condition_effects(main, b)
         if effects:
             r["condition_effects"] = effects
@@ -218,6 +219,27 @@ def build(cfg: dict, df: pd.DataFrame, traces: pd.DataFrame, plan: list[dict],
                                          floor, sorted(map(str, main.provider_model.dropna().unique())), b)
         out["models"][name] = r
     return out
+
+
+def error_analysis(g: pd.DataFrame, top: int = 6) -> dict:
+    """Which mistakes the model makes. Confusions are (analyst code -> model answer) pairs with
+    their share of all errors; usage compares how often each category is the analyst's code and
+    how often it is the model's answer, which shows systematic over- or under-use."""
+    pred = g["pred"].fillna("(refusal)")
+    wrong = g[pred != g["human_label"]]
+    wp = pred[wrong.index]
+    pairs = Counter(zip(wrong["human_label"], wp))
+    n_err = int(len(wrong))
+    labels_ = sorted(set(g["human_label"]) | set(pred))
+    usage = {c: {"analyst_share": float((g["human_label"] == c).mean()),
+                 "model_share": float((pred == c).mean())} for c in labels_}
+    return {
+        "n": int(len(g)), "n_errors": n_err,
+        "top_confusions": [{"analyst": a, "model": m_, "count": int(k),
+                            "share_of_errors": float(k / n_err) if n_err else 0.0}
+                           for (a, m_), k in pairs.most_common(top)],
+        "category_usage": dict(sorted(usage.items(), key=lambda kv: -kv[1]["model_share"])),
+    }
 
 
 # (treatment, control) pairs compared on the reports both have, paired bootstrap

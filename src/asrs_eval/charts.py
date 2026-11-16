@@ -243,8 +243,8 @@ def probes(res: dict, path: Path):
         if nf:
             ax.axvspan(*nf["ci95"], color=GRID, zorder=0)
             ax.axvline(nf["estimate"], color=INK2, linewidth=0.9)
-            ax.text(nf["estimate"], 1.0, " noise floor", transform=ax.get_xaxis_transform(),
-                    fontsize=7, color=INK2, fontstyle="italic", va="bottom")
+            ax.text(nf["ci95"][1], -0.75, " noise floor", fontsize=7, color=INK2,
+                    fontstyle="italic", va="center", ha="left")
         items = [(p, v) for p, v in m["probes"].items() if "answer_change_rate" in v]
         for yi, (p, v) in enumerate(items[::-1]):
             c = v["answer_change_rate"]
@@ -252,13 +252,16 @@ def probes(res: dict, path: Path):
             ax.plot(c["ci95"], [yi, yi], color=BLUE, linewidth=1.6, solid_capstyle="butt")
             ax.plot(c["estimate"], yi, "o", color=BLUE, markersize=6, markeredgecolor=PAPER,
                     markeredgewidth=1.2, zorder=3)
-        ax.set_yticks(range(len(items)), [f"{p}  (n={v['n']})" for p, v in items[::-1]])
+        names = {"jargon": "jargon expansion", "order": "reversed label order",
+                 "padding": "padding (category terms)", "padding_neutral": "padding (neutral)"}
+        ax.set_yticks(range(len(items)), [f"{names.get(p, p)}  (n={v['n']})" for p, v in items[::-1]])
         _axes(ax)
         ax.xaxis.set_major_formatter(PercentFormatter(1.0, decimals=0))
         ax.set_xlabel("answers changed vs unprobed prompt")
         _panel(ax, "abcd"[i], SHORT.get(name, name))
     for ax in axes[0]:
         ax.set_xlim(0, xmax)
+        ax.set_ylim(-1.05, ax.get_ylim()[1])     # room under the last row for the band label
     _stamp(fig, res)
     _save(fig, path, top=0.9)
     return True

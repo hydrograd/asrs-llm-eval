@@ -1,5 +1,5 @@
 {
-  "generated": "2026-11-16T07:19:44+00:00",
+  "generated": "2026-11-16T11:12:45+00:00",
   "scoring_rules": "(stated here because every number depends on them):\n- Predictions use the full ASRS label set; they are folded into \"Other\" with the same\n  rare-class mapping as the human labels before comparison.\n- A refusal (schema failed twice) counts as WRONG in accuracy, macro-F1 and kappa, and is\n  excluded from calibration (it has no confidence). Refusal rates are reported separately.\n- Provider errors are not results: those jobs are still pending and are reported only as\n  an availability figure.\n- Baselines are scored on exactly the same reports as each model result.\n- Memorisation = accuracy(before cutoff) - accuracy(after cutoff), different reports, so an\n  unpaired bootstrap. Because the \"after\" reports could simply be harder, the same gap is\n  computed for the TF-IDF baseline (which cannot have memorised anything) and subtracted:\n  the adjusted gap is the LLM's drop beyond what the reports' difficulty explains.\n- Retrieval and probe effects compare the same reports, so a paired bootstrap.\n- The noise floor is how often an identical prompt gets a different answer; every probe's\n  answer-change rate is compared with it.",
   "baselines_full_test_pool": {
     "majority": {
@@ -79,7 +79,7 @@
       "training_cutoff_partial": null,
       "progress": {
         "done": 1832,
-        "planned": 1900,
+        "planned": 2000,
         "complete": false
       },
       "reliability": {
@@ -103,7 +103,7 @@
             "n": 400,
             "accuracy": 0.5175,
             "macro_f1": 0.3401098474302429,
-            "cohen_kappa": 0.3827999456352283,
+            "cohen_kappa": 0.38279994563522834,
             "refusal_rate": 0.0,
             "schema_failure_rate": 0.0075,
             "mean_confidence": 0.8272749999999999,
@@ -280,7 +280,7 @@
           "pre": {
             "n": 200,
             "accuracy": 0.48,
-            "macro_f1": 0.18778604907637161,
+            "macro_f1": 0.18778604907637167,
             "cohen_kappa": 0.3262721471836232,
             "refusal_rate": 0.0,
             "schema_failure_rate": 0.01,
@@ -400,8 +400,8 @@
           "all": {
             "n": 400,
             "accuracy": 0.705,
-            "macro_f1": 0.4559161513405545,
-            "cohen_kappa": 0.5929244754159156,
+            "macro_f1": 0.4559161513405546,
+            "cohen_kappa": 0.5929244754159155,
             "refusal_rate": 0.0,
             "schema_failure_rate": 0.0075,
             "mean_confidence": 0.872125,
@@ -698,7 +698,7 @@
           "all": {
             "n": 356,
             "accuracy": 0.7078651685393258,
-            "macro_f1": 0.4461454309378352,
+            "macro_f1": 0.44614543093783515,
             "cohen_kappa": 0.59392377296408,
             "refusal_rate": 0.0,
             "schema_failure_rate": 0.011235955056179775,
@@ -788,7 +788,7 @@
             "n": 178,
             "accuracy": 0.702247191011236,
             "macro_f1": 0.47132562477147294,
-            "cohen_kappa": 0.5976972281449895,
+            "cohen_kappa": 0.5976972281449894,
             "refusal_rate": 0.0,
             "schema_failure_rate": 0.0056179775280898875,
             "mean_confidence": 0.871685393258427,
@@ -1174,7 +1174,7 @@
           "pre": {
             "n": 100,
             "accuracy": 0.53,
-            "macro_f1": 0.20965201465201466,
+            "macro_f1": 0.2096520146520146,
             "cohen_kappa": 0.3760785875481216,
             "refusal_rate": 0.0,
             "schema_failure_rate": 0.0,
@@ -1287,6 +1287,436 @@
                 -0.3,
                 0.06
               ]
+            }
+          }
+        }
+      },
+      "error_analysis": {
+        "no_retrieval": {
+          "n": 400,
+          "n_errors": 193,
+          "top_confusions": [
+            {
+              "analyst": "Aircraft",
+              "model": "Equipment / Tooling",
+              "count": 37,
+              "share_of_errors": 0.19170984455958548
+            },
+            {
+              "analyst": "Aircraft",
+              "model": "Human Factors",
+              "count": 22,
+              "share_of_errors": 0.11398963730569948
+            },
+            {
+              "analyst": "Procedure",
+              "model": "Human Factors",
+              "count": 19,
+              "share_of_errors": 0.09844559585492228
+            },
+            {
+              "analyst": "Ambiguous",
+              "model": "Human Factors",
+              "count": 15,
+              "share_of_errors": 0.07772020725388601
+            },
+            {
+              "analyst": "Human Factors",
+              "model": "Procedure",
+              "count": 8,
+              "share_of_errors": 0.04145077720207254
+            },
+            {
+              "analyst": "Aircraft",
+              "model": "Procedure",
+              "count": 7,
+              "share_of_errors": 0.03626943005181347
+            }
+          ],
+          "category_usage": {
+            "Human Factors": {
+              "analyst_share": 0.2975,
+              "model_share": 0.405
+            },
+            "Aircraft": {
+              "analyst_share": 0.41,
+              "model_share": 0.215
+            },
+            "Equipment / Tooling": {
+              "analyst_share": 0.0,
+              "model_share": 0.1175
+            },
+            "Procedure": {
+              "analyst_share": 0.0875,
+              "model_share": 0.065
+            },
+            "Weather": {
+              "analyst_share": 0.0475,
+              "model_share": 0.0525
+            },
+            "Environment - Non Weather Related": {
+              "analyst_share": 0.01,
+              "model_share": 0.0375
+            },
+            "Airport": {
+              "analyst_share": 0.0175,
+              "model_share": 0.025
+            },
+            "Incorrect / Not Installed / Unavailable Part": {
+              "analyst_share": 0.0,
+              "model_share": 0.0175
+            },
+            "ATC Equipment / Nav Facility / Buildings": {
+              "analyst_share": 0.0125,
+              "model_share": 0.015
+            },
+            "Software and Automation": {
+              "analyst_share": 0.0075,
+              "model_share": 0.0125
+            },
+            "Airspace Structure": {
+              "analyst_share": 0.015,
+              "model_share": 0.01
+            },
+            "Other": {
+              "analyst_share": 0.0025,
+              "model_share": 0.01
+            },
+            "Chart Or Publication": {
+              "analyst_share": 0.02,
+              "model_share": 0.0075
+            },
+            "Company Policy": {
+              "analyst_share": 0.0,
+              "model_share": 0.0075
+            },
+            "MEL": {
+              "analyst_share": 0.0025,
+              "model_share": 0.0025
+            },
+            "Ambiguous": {
+              "analyst_share": 0.07,
+              "model_share": 0.0
+            }
+          }
+        },
+        "retrieval": {
+          "n": 400,
+          "n_errors": 118,
+          "top_confusions": [
+            {
+              "analyst": "Procedure",
+              "model": "Human Factors",
+              "count": 17,
+              "share_of_errors": 0.1440677966101695
+            },
+            {
+              "analyst": "Ambiguous",
+              "model": "Human Factors",
+              "count": 13,
+              "share_of_errors": 0.11016949152542373
+            },
+            {
+              "analyst": "Human Factors",
+              "model": "Procedure",
+              "count": 12,
+              "share_of_errors": 0.1016949152542373
+            },
+            {
+              "analyst": "Ambiguous",
+              "model": "Procedure",
+              "count": 4,
+              "share_of_errors": 0.03389830508474576
+            },
+            {
+              "analyst": "Weather",
+              "model": "Human Factors",
+              "count": 4,
+              "share_of_errors": 0.03389830508474576
+            },
+            {
+              "analyst": "Aircraft",
+              "model": "Procedure",
+              "count": 3,
+              "share_of_errors": 0.025423728813559324
+            }
+          ],
+          "category_usage": {
+            "Aircraft": {
+              "analyst_share": 0.41,
+              "model_share": 0.3875
+            },
+            "Human Factors": {
+              "analyst_share": 0.2975,
+              "model_share": 0.355
+            },
+            "Procedure": {
+              "analyst_share": 0.0875,
+              "model_share": 0.0775
+            },
+            "Weather": {
+              "analyst_share": 0.0475,
+              "model_share": 0.0425
+            },
+            "Environment - Non Weather Related": {
+              "analyst_share": 0.01,
+              "model_share": 0.0275
+            },
+            "ATC Equipment / Nav Facility / Buildings": {
+              "analyst_share": 0.0125,
+              "model_share": 0.0175
+            },
+            "Airport": {
+              "analyst_share": 0.0175,
+              "model_share": 0.0175
+            },
+            "Airspace Structure": {
+              "analyst_share": 0.015,
+              "model_share": 0.0125
+            },
+            "Chart Or Publication": {
+              "analyst_share": 0.02,
+              "model_share": 0.0125
+            },
+            "Equipment / Tooling": {
+              "analyst_share": 0.0,
+              "model_share": 0.0125
+            },
+            "Ambiguous": {
+              "analyst_share": 0.07,
+              "model_share": 0.01
+            },
+            "Software and Automation": {
+              "analyst_share": 0.0075,
+              "model_share": 0.01
+            },
+            "Company Policy": {
+              "analyst_share": 0.0,
+              "model_share": 0.005
+            },
+            "Incorrect / Not Installed / Unavailable Part": {
+              "analyst_share": 0.0,
+              "model_share": 0.005
+            },
+            "Other": {
+              "analyst_share": 0.0025,
+              "model_share": 0.005
+            },
+            "MEL": {
+              "analyst_share": 0.0025,
+              "model_share": 0.0025
+            }
+          }
+        },
+        "retrieval_dense": {
+          "n": 356,
+          "n_errors": 104,
+          "top_confusions": [
+            {
+              "analyst": "Procedure",
+              "model": "Human Factors",
+              "count": 20,
+              "share_of_errors": 0.19230769230769232
+            },
+            {
+              "analyst": "Ambiguous",
+              "model": "Human Factors",
+              "count": 13,
+              "share_of_errors": 0.125
+            },
+            {
+              "analyst": "Aircraft",
+              "model": "Human Factors",
+              "count": 7,
+              "share_of_errors": 0.0673076923076923
+            },
+            {
+              "analyst": "Human Factors",
+              "model": "Procedure",
+              "count": 4,
+              "share_of_errors": 0.038461538461538464
+            },
+            {
+              "analyst": "Ambiguous",
+              "model": "Procedure",
+              "count": 4,
+              "share_of_errors": 0.038461538461538464
+            },
+            {
+              "analyst": "Aircraft",
+              "model": "Procedure",
+              "count": 3,
+              "share_of_errors": 0.028846153846153848
+            }
+          ],
+          "category_usage": {
+            "Aircraft": {
+              "analyst_share": 0.4157303370786517,
+              "model_share": 0.38764044943820225
+            },
+            "Human Factors": {
+              "analyst_share": 0.2893258426966292,
+              "model_share": 0.38202247191011235
+            },
+            "Procedure": {
+              "analyst_share": 0.08426966292134831,
+              "model_share": 0.05056179775280899
+            },
+            "Weather": {
+              "analyst_share": 0.042134831460674156,
+              "model_share": 0.047752808988764044
+            },
+            "ATC Equipment / Nav Facility / Buildings": {
+              "analyst_share": 0.014044943820224719,
+              "model_share": 0.02247191011235955
+            },
+            "Airspace Structure": {
+              "analyst_share": 0.014044943820224719,
+              "model_share": 0.019662921348314606
+            },
+            "Ambiguous": {
+              "analyst_share": 0.07584269662921349,
+              "model_share": 0.016853932584269662
+            },
+            "Chart Or Publication": {
+              "analyst_share": 0.02247191011235955,
+              "model_share": 0.016853932584269662
+            },
+            "Environment - Non Weather Related": {
+              "analyst_share": 0.011235955056179775,
+              "model_share": 0.011235955056179775
+            },
+            "Software and Automation": {
+              "analyst_share": 0.008426966292134831,
+              "model_share": 0.011235955056179775
+            },
+            "Airport": {
+              "analyst_share": 0.016853932584269662,
+              "model_share": 0.008426966292134831
+            },
+            "Equipment / Tooling": {
+              "analyst_share": 0.0,
+              "model_share": 0.008426966292134831
+            },
+            "Incorrect / Not Installed / Unavailable Part": {
+              "analyst_share": 0.0,
+              "model_share": 0.008426966292134831
+            },
+            "Other": {
+              "analyst_share": 0.0028089887640449437,
+              "model_share": 0.008426966292134831
+            },
+            "MEL": {
+              "analyst_share": 0.0028089887640449437,
+              "model_share": 0.0
+            }
+          }
+        },
+        "tool_retrieval": {
+          "n": 200,
+          "n_errors": 91,
+          "top_confusions": [
+            {
+              "analyst": "Aircraft",
+              "model": "Equipment / Tooling",
+              "count": 14,
+              "share_of_errors": 0.15384615384615385
+            },
+            {
+              "analyst": "Aircraft",
+              "model": "Human Factors",
+              "count": 10,
+              "share_of_errors": 0.10989010989010989
+            },
+            {
+              "analyst": "Human Factors",
+              "model": "Procedure",
+              "count": 9,
+              "share_of_errors": 0.0989010989010989
+            },
+            {
+              "analyst": "Procedure",
+              "model": "Human Factors",
+              "count": 8,
+              "share_of_errors": 0.08791208791208792
+            },
+            {
+              "analyst": "Ambiguous",
+              "model": "Human Factors",
+              "count": 6,
+              "share_of_errors": 0.06593406593406594
+            },
+            {
+              "analyst": "Aircraft",
+              "model": "Procedure",
+              "count": 5,
+              "share_of_errors": 0.054945054945054944
+            }
+          ],
+          "category_usage": {
+            "Human Factors": {
+              "analyst_share": 0.305,
+              "model_share": 0.395
+            },
+            "Aircraft": {
+              "analyst_share": 0.405,
+              "model_share": 0.23
+            },
+            "Procedure": {
+              "analyst_share": 0.08,
+              "model_share": 0.105
+            },
+            "Equipment / Tooling": {
+              "analyst_share": 0.0,
+              "model_share": 0.1
+            },
+            "Environment - Non Weather Related": {
+              "analyst_share": 0.015,
+              "model_share": 0.04
+            },
+            "Weather": {
+              "analyst_share": 0.035,
+              "model_share": 0.035
+            },
+            "Software and Automation": {
+              "analyst_share": 0.01,
+              "model_share": 0.025
+            },
+            "ATC Equipment / Nav Facility / Buildings": {
+              "analyst_share": 0.015,
+              "model_share": 0.015
+            },
+            "Airport": {
+              "analyst_share": 0.02,
+              "model_share": 0.015
+            },
+            "Chart Or Publication": {
+              "analyst_share": 0.035,
+              "model_share": 0.015
+            },
+            "Airspace Structure": {
+              "analyst_share": 0.02,
+              "model_share": 0.01
+            },
+            "Company Policy": {
+              "analyst_share": 0.0,
+              "model_share": 0.005
+            },
+            "Incorrect / Not Installed / Unavailable Part": {
+              "analyst_share": 0.0,
+              "model_share": 0.005
+            },
+            "Other": {
+              "analyst_share": 0.0,
+              "model_share": 0.005
+            },
+            "Ambiguous": {
+              "analyst_share": 0.055,
+              "model_share": 0.0
+            },
+            "MEL": {
+              "analyst_share": 0.005,
+              "model_share": 0.0
             }
           }
         }
@@ -1453,7 +1883,7 @@
       "training_cutoff_partial": null,
       "progress": {
         "done": 1836,
-        "planned": 1900,
+        "planned": 2000,
         "complete": false
       },
       "reliability": {
@@ -1654,7 +2084,7 @@
           "pre": {
             "n": 200,
             "accuracy": 0.265,
-            "macro_f1": 0.1689290826203904,
+            "macro_f1": 0.16892908262039041,
             "cohen_kappa": 0.117249662212881,
             "refusal_rate": 0.0,
             "schema_failure_rate": 0.0,
@@ -1863,7 +2293,7 @@
           "post": {
             "n": 200,
             "accuracy": 0.665,
-            "macro_f1": 0.4989716465068578,
+            "macro_f1": 0.4989716465068577,
             "cohen_kappa": 0.5574490571022822,
             "refusal_rate": 0.0,
             "schema_failure_rate": 0.0,
@@ -1953,7 +2383,7 @@
             "n": 200,
             "accuracy": 0.695,
             "macro_f1": 0.2537866405143293,
-            "cohen_kappa": 0.5574097587520406,
+            "cohen_kappa": 0.5574097587520407,
             "refusal_rate": 0.0,
             "schema_failure_rate": 0.0,
             "mean_confidence": 0.9103,
@@ -2072,7 +2502,7 @@
           "all": {
             "n": 354,
             "accuracy": 0.6864406779661016,
-            "macro_f1": 0.3797058854354992,
+            "macro_f1": 0.37970588543549916,
             "cohen_kappa": 0.5639765199347528,
             "refusal_rate": 0.0,
             "schema_failure_rate": 0.0,
@@ -2250,7 +2680,7 @@
           "pre": {
             "n": 177,
             "accuracy": 0.7005649717514124,
-            "macro_f1": 0.4191503456755446,
+            "macro_f1": 0.41915034567554466,
             "cohen_kappa": 0.5651508830482547,
             "refusal_rate": 0.0,
             "schema_failure_rate": 0.0,
@@ -2661,6 +3091,428 @@
                 -0.41999999999999993,
                 -0.06
               ]
+            }
+          }
+        }
+      },
+      "error_analysis": {
+        "no_retrieval": {
+          "n": 400,
+          "n_errors": 261,
+          "top_confusions": [
+            {
+              "analyst": "Aircraft",
+              "model": "Equipment / Tooling",
+              "count": 79,
+              "share_of_errors": 0.30268199233716475
+            },
+            {
+              "analyst": "Aircraft",
+              "model": "Human Factors",
+              "count": 56,
+              "share_of_errors": 0.21455938697318008
+            },
+            {
+              "analyst": "Procedure",
+              "model": "Human Factors",
+              "count": 22,
+              "share_of_errors": 0.0842911877394636
+            },
+            {
+              "analyst": "Ambiguous",
+              "model": "Human Factors",
+              "count": 21,
+              "share_of_errors": 0.08045977011494253
+            },
+            {
+              "analyst": "Weather",
+              "model": "Human Factors",
+              "count": 8,
+              "share_of_errors": 0.03065134099616858
+            },
+            {
+              "analyst": "Human Factors",
+              "model": "Equipment / Tooling",
+              "count": 7,
+              "share_of_errors": 0.02681992337164751
+            }
+          ],
+          "category_usage": {
+            "Human Factors": {
+              "analyst_share": 0.2975,
+              "model_share": 0.56
+            },
+            "Equipment / Tooling": {
+              "analyst_share": 0.0,
+              "model_share": 0.2425
+            },
+            "Procedure": {
+              "analyst_share": 0.0875,
+              "model_share": 0.04
+            },
+            "Weather": {
+              "analyst_share": 0.0475,
+              "model_share": 0.04
+            },
+            "Aircraft": {
+              "analyst_share": 0.41,
+              "model_share": 0.0325
+            },
+            "ATC Equipment / Nav Facility / Buildings": {
+              "analyst_share": 0.0125,
+              "model_share": 0.0175
+            },
+            "Software and Automation": {
+              "analyst_share": 0.0075,
+              "model_share": 0.015
+            },
+            "Chart Or Publication": {
+              "analyst_share": 0.02,
+              "model_share": 0.0125
+            },
+            "Environment - Non Weather Related": {
+              "analyst_share": 0.01,
+              "model_share": 0.0125
+            },
+            "Ambiguous": {
+              "analyst_share": 0.07,
+              "model_share": 0.01
+            },
+            "Airspace Structure": {
+              "analyst_share": 0.015,
+              "model_share": 0.005
+            },
+            "MEL": {
+              "analyst_share": 0.0025,
+              "model_share": 0.005
+            },
+            "Airport": {
+              "analyst_share": 0.0175,
+              "model_share": 0.0025
+            },
+            "Company Policy": {
+              "analyst_share": 0.0,
+              "model_share": 0.0025
+            },
+            "Incorrect / Not Installed / Unavailable Part": {
+              "analyst_share": 0.0,
+              "model_share": 0.0025
+            },
+            "Other": {
+              "analyst_share": 0.0025,
+              "model_share": 0.0
+            }
+          }
+        },
+        "retrieval": {
+          "n": 400,
+          "n_errors": 128,
+          "top_confusions": [
+            {
+              "analyst": "Procedure",
+              "model": "Human Factors",
+              "count": 18,
+              "share_of_errors": 0.140625
+            },
+            {
+              "analyst": "Human Factors",
+              "model": "Procedure",
+              "count": 14,
+              "share_of_errors": 0.109375
+            },
+            {
+              "analyst": "Ambiguous",
+              "model": "Human Factors",
+              "count": 12,
+              "share_of_errors": 0.09375
+            },
+            {
+              "analyst": "Aircraft",
+              "model": "Human Factors",
+              "count": 8,
+              "share_of_errors": 0.0625
+            },
+            {
+              "analyst": "Ambiguous",
+              "model": "Procedure",
+              "count": 6,
+              "share_of_errors": 0.046875
+            },
+            {
+              "analyst": "Aircraft",
+              "model": "Procedure",
+              "count": 5,
+              "share_of_errors": 0.0390625
+            }
+          ],
+          "category_usage": {
+            "Aircraft": {
+              "analyst_share": 0.41,
+              "model_share": 0.375
+            },
+            "Human Factors": {
+              "analyst_share": 0.2975,
+              "model_share": 0.3575
+            },
+            "Procedure": {
+              "analyst_share": 0.0875,
+              "model_share": 0.0975
+            },
+            "Weather": {
+              "analyst_share": 0.0475,
+              "model_share": 0.0425
+            },
+            "Environment - Non Weather Related": {
+              "analyst_share": 0.01,
+              "model_share": 0.03
+            },
+            "Equipment / Tooling": {
+              "analyst_share": 0.0,
+              "model_share": 0.0275
+            },
+            "ATC Equipment / Nav Facility / Buildings": {
+              "analyst_share": 0.0125,
+              "model_share": 0.0175
+            },
+            "Chart Or Publication": {
+              "analyst_share": 0.02,
+              "model_share": 0.015
+            },
+            "Airport": {
+              "analyst_share": 0.0175,
+              "model_share": 0.0125
+            },
+            "Software and Automation": {
+              "analyst_share": 0.0075,
+              "model_share": 0.01
+            },
+            "Ambiguous": {
+              "analyst_share": 0.07,
+              "model_share": 0.005
+            },
+            "Company Policy": {
+              "analyst_share": 0.0,
+              "model_share": 0.005
+            },
+            "Airspace Structure": {
+              "analyst_share": 0.015,
+              "model_share": 0.0025
+            },
+            "Other": {
+              "analyst_share": 0.0025,
+              "model_share": 0.0025
+            },
+            "MEL": {
+              "analyst_share": 0.0025,
+              "model_share": 0.0
+            }
+          }
+        },
+        "retrieval_dense": {
+          "n": 354,
+          "n_errors": 111,
+          "top_confusions": [
+            {
+              "analyst": "Procedure",
+              "model": "Human Factors",
+              "count": 16,
+              "share_of_errors": 0.14414414414414414
+            },
+            {
+              "analyst": "Ambiguous",
+              "model": "Human Factors",
+              "count": 13,
+              "share_of_errors": 0.11711711711711711
+            },
+            {
+              "analyst": "Aircraft",
+              "model": "Human Factors",
+              "count": 7,
+              "share_of_errors": 0.06306306306306306
+            },
+            {
+              "analyst": "Aircraft",
+              "model": "Equipment / Tooling",
+              "count": 4,
+              "share_of_errors": 0.036036036036036036
+            },
+            {
+              "analyst": "Human Factors",
+              "model": "Procedure",
+              "count": 4,
+              "share_of_errors": 0.036036036036036036
+            },
+            {
+              "analyst": "Ambiguous",
+              "model": "Procedure",
+              "count": 4,
+              "share_of_errors": 0.036036036036036036
+            }
+          ],
+          "category_usage": {
+            "Aircraft": {
+              "analyst_share": 0.4124293785310734,
+              "model_share": 0.4011299435028249
+            },
+            "Human Factors": {
+              "analyst_share": 0.2909604519774011,
+              "model_share": 0.3672316384180791
+            },
+            "Procedure": {
+              "analyst_share": 0.0847457627118644,
+              "model_share": 0.05649717514124294
+            },
+            "Weather": {
+              "analyst_share": 0.0423728813559322,
+              "model_share": 0.0423728813559322
+            },
+            "ATC Equipment / Nav Facility / Buildings": {
+              "analyst_share": 0.014124293785310734,
+              "model_share": 0.02824858757062147
+            },
+            "Environment - Non Weather Related": {
+              "analyst_share": 0.011299435028248588,
+              "model_share": 0.022598870056497175
+            },
+            "Equipment / Tooling": {
+              "analyst_share": 0.0,
+              "model_share": 0.01977401129943503
+            },
+            "Chart Or Publication": {
+              "analyst_share": 0.022598870056497175,
+              "model_share": 0.01694915254237288
+            },
+            "Airspace Structure": {
+              "analyst_share": 0.014124293785310734,
+              "model_share": 0.00847457627118644
+            },
+            "Ambiguous": {
+              "analyst_share": 0.07627118644067797,
+              "model_share": 0.00847457627118644
+            },
+            "Other": {
+              "analyst_share": 0.002824858757062147,
+              "model_share": 0.00847457627118644
+            },
+            "Software and Automation": {
+              "analyst_share": 0.00847457627118644,
+              "model_share": 0.00847457627118644
+            },
+            "Airport": {
+              "analyst_share": 0.01694915254237288,
+              "model_share": 0.005649717514124294
+            },
+            "Company Policy": {
+              "analyst_share": 0.0,
+              "model_share": 0.002824858757062147
+            },
+            "Incorrect / Not Installed / Unavailable Part": {
+              "analyst_share": 0.0,
+              "model_share": 0.002824858757062147
+            },
+            "MEL": {
+              "analyst_share": 0.002824858757062147,
+              "model_share": 0.0
+            }
+          }
+        },
+        "tool_retrieval": {
+          "n": 200,
+          "n_errors": 123,
+          "top_confusions": [
+            {
+              "analyst": "Aircraft",
+              "model": "Equipment / Tooling",
+              "count": 36,
+              "share_of_errors": 0.2926829268292683
+            },
+            {
+              "analyst": "Aircraft",
+              "model": "Human Factors",
+              "count": 20,
+              "share_of_errors": 0.16260162601626016
+            },
+            {
+              "analyst": "Procedure",
+              "model": "Human Factors",
+              "count": 11,
+              "share_of_errors": 0.08943089430894309
+            },
+            {
+              "analyst": "Human Factors",
+              "model": "Procedure",
+              "count": 8,
+              "share_of_errors": 0.06504065040650407
+            },
+            {
+              "analyst": "Ambiguous",
+              "model": "Human Factors",
+              "count": 7,
+              "share_of_errors": 0.056910569105691054
+            },
+            {
+              "analyst": "Aircraft",
+              "model": "Procedure",
+              "count": 3,
+              "share_of_errors": 0.024390243902439025
+            }
+          ],
+          "category_usage": {
+            "Human Factors": {
+              "analyst_share": 0.305,
+              "model_share": 0.465
+            },
+            "Equipment / Tooling": {
+              "analyst_share": 0.0,
+              "model_share": 0.215
+            },
+            "Procedure": {
+              "analyst_share": 0.08,
+              "model_share": 0.09
+            },
+            "Aircraft": {
+              "analyst_share": 0.405,
+              "model_share": 0.065
+            },
+            "Environment - Non Weather Related": {
+              "analyst_share": 0.015,
+              "model_share": 0.045
+            },
+            "Weather": {
+              "analyst_share": 0.035,
+              "model_share": 0.03
+            },
+            "Chart Or Publication": {
+              "analyst_share": 0.035,
+              "model_share": 0.025
+            },
+            "Airport": {
+              "analyst_share": 0.02,
+              "model_share": 0.02
+            },
+            "ATC Equipment / Nav Facility / Buildings": {
+              "analyst_share": 0.015,
+              "model_share": 0.015
+            },
+            "Software and Automation": {
+              "analyst_share": 0.01,
+              "model_share": 0.015
+            },
+            "Incorrect / Not Installed / Unavailable Part": {
+              "analyst_share": 0.0,
+              "model_share": 0.01
+            },
+            "Ambiguous": {
+              "analyst_share": 0.055,
+              "model_share": 0.005
+            },
+            "Airspace Structure": {
+              "analyst_share": 0.02,
+              "model_share": 0.0
+            },
+            "MEL": {
+              "analyst_share": 0.005,
+              "model_share": 0.0
             }
           }
         }
@@ -3143,6 +3995,100 @@
                 -0.06,
                 0.38
               ]
+            }
+          }
+        }
+      },
+      "error_analysis": {
+        "no_retrieval": {
+          "n": 100,
+          "n_errors": 28,
+          "top_confusions": [
+            {
+              "analyst": "Ambiguous",
+              "model": "Human Factors",
+              "count": 8,
+              "share_of_errors": 0.2857142857142857
+            },
+            {
+              "analyst": "Human Factors",
+              "model": "Environment - Non Weather Related",
+              "count": 3,
+              "share_of_errors": 0.10714285714285714
+            },
+            {
+              "analyst": "Human Factors",
+              "model": "Weather",
+              "count": 2,
+              "share_of_errors": 0.07142857142857142
+            },
+            {
+              "analyst": "Chart Or Publication",
+              "model": "Human Factors",
+              "count": 2,
+              "share_of_errors": 0.07142857142857142
+            },
+            {
+              "analyst": "Aircraft",
+              "model": "Environment - Non Weather Related",
+              "count": 1,
+              "share_of_errors": 0.03571428571428571
+            },
+            {
+              "analyst": "Aircraft",
+              "model": "Human Factors",
+              "count": 1,
+              "share_of_errors": 0.03571428571428571
+            }
+          ],
+          "category_usage": {
+            "Human Factors": {
+              "analyst_share": 0.35,
+              "model_share": 0.44
+            },
+            "Aircraft": {
+              "analyst_share": 0.33,
+              "model_share": 0.32
+            },
+            "Environment - Non Weather Related": {
+              "analyst_share": 0.05,
+              "model_share": 0.1
+            },
+            "Airspace Structure": {
+              "analyst_share": 0.02,
+              "model_share": 0.03
+            },
+            "Weather": {
+              "analyst_share": 0.01,
+              "model_share": 0.03
+            },
+            "Airport": {
+              "analyst_share": 0.03,
+              "model_share": 0.02
+            },
+            "Chart Or Publication": {
+              "analyst_share": 0.03,
+              "model_share": 0.02
+            },
+            "Software and Automation": {
+              "analyst_share": 0.0,
+              "model_share": 0.02
+            },
+            "ATC Equipment / Nav Facility / Buildings": {
+              "analyst_share": 0.03,
+              "model_share": 0.01
+            },
+            "Ambiguous": {
+              "analyst_share": 0.11,
+              "model_share": 0.01
+            },
+            "Company Policy": {
+              "analyst_share": 0.01,
+              "model_share": 0.0
+            },
+            "Procedure": {
+              "analyst_share": 0.03,
+              "model_share": 0.0
             }
           }
         }

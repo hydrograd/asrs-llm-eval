@@ -95,17 +95,27 @@ def build_plan(cfg: dict, df: pd.DataFrame) -> list[dict]:
 def extension_jobs(cfg: dict, jobs: list[dict]) -> list[dict]:
     """Jobs added after the plan was frozen (cfg["extensions"]). Each extension re-runs the
     first n reports of a model's main sample, in the original interleaved order, under a new
-    condition, so new conditions are compared with the old ones on exactly the same reports."""
+    condition, so new conditions are compared with the old ones on exactly the same reports.
+
+    An extension with a "probe" instead re-runs the reports of the model's existing probe sample
+    under that probe, so it is compared with the unprobed run (and the other probes) on the
+    same reports."""
     out = []
     for ext in cfg.get("extensions", []):
+        source = "probe" if "probe" in ext else "main"
         for model in ext["models"]:
             items, seen = [], set()
             for j in jobs:
-                if j["model"] == model and j["experiment"] == "main" and j["acn"] not in seen:
+                if j["model"] == model and j["experiment"] == source and j["acn"] not in seen:
                     seen.add(j["acn"]); items.append(j)
             for j in items[:ext["n_items"]]:
-                out.append({**j, "key": f"main|{model}|{j['acn']}|{ext['condition']}|-|0",
-                            "condition": ext["condition"], "extension": ext["name"]})
+                if source == "probe":
+                    out.append({**j, "key": f"probe|{model}|{j['acn']}|no_retrieval|{ext['probe']}|0",
+                                "condition": "no_retrieval", "probe": ext["probe"],
+                                "extension": ext["name"]})
+                else:
+                    out.append({**j, "key": f"main|{model}|{j['acn']}|{ext['condition']}|-|0",
+                                "condition": ext["condition"], "extension": ext["name"]})
     return out
 
 

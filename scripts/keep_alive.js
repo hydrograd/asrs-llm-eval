@@ -5,20 +5,24 @@
 // Free-tier apps sleep after a period without visitors and show a "this app has gone to sleep"
 // page whose button must be clicked to wake it; a plain HTTP request does not count as a visit.
 // This opens the app in a real headless browser, clicks the wake button if it is there, and
-// waits for the dashboard's own title to render inside the app frame. Exits non-zero (and saves
+// waits for the dashboard's title to render inside the app frame. Exits non-zero (and saves
 // a screenshot) if the dashboard does not load, so a failed wake shows up as a failed run.
 const { chromium } = require("playwright");
 
 const URL = process.argv[2] || "https://aviation-llm-eval.streamlit.app/";
 const SHOT = process.argv[3] || "keep_alive.png";
-const TITLE = /Do LLMs agree with expert aviation safety coders/;
 const WAKE = /get this app back up|wake (this )?app/i;
 
+// The dashboard runs inside Streamlit Cloud's app frame (URL path /~/+/). It counts as loaded
+// when that frame shows a non-empty main title. Matching the frame rather than the title text
+// means renaming the dashboard cannot break this check (as happened on 16 November); the sleep
+// page and Streamlit's own wrapper live outside that frame.
 async function titleRendered(page) {
   for (const f of page.frames()) {
+    if (!f.url().includes("/~/+/")) continue;
     try {
       const t = await f.locator("h1").first().innerText({ timeout: 1000 });
-      if (TITLE.test(t)) return true;
+      if (t.trim().length > 0) return true;
     } catch (_) {}
   }
   return false;

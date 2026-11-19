@@ -1,5 +1,5 @@
 {
-  "generated": "2026-11-17T04:24:26+00:00",
+  "generated": "2026-11-19T16:43:11+00:00",
   "scoring_rules": "(stated here because every number depends on them):\n- Predictions use the full ASRS label set; they are folded into \"Other\" with the same\n  rare-class mapping as the human labels before comparison.\n- A refusal (schema failed twice) counts as WRONG in accuracy, macro-F1 and kappa, and is\n  excluded from calibration (it has no confidence). Refusal rates are reported separately.\n- Provider errors are not results: those jobs are still pending and are reported only as\n  an availability figure.\n- Baselines are scored on exactly the same reports as each model result.\n- Memorisation = accuracy(before cutoff) - accuracy(after cutoff), different reports, so an\n  unpaired bootstrap. Because the \"after\" reports could simply be harder, the same gap is\n  computed for the TF-IDF baseline (which cannot have memorised anything) and subtracted:\n  the adjusted gap is the LLM's drop beyond what the reports' difficulty explains.\n- Retrieval and probe effects compare the same reports, so a paired bootstrap.\n- The noise floor is how often an identical prompt gets a different answer; every probe's\n  answer-change rate is compared with it.",
   "baselines_full_test_pool": {
     "majority": {
@@ -102,8 +102,8 @@
           "all": {
             "n": 400,
             "accuracy": 0.5175,
-            "macro_f1": 0.3401098474302429,
-            "cohen_kappa": 0.3827999456352283,
+            "macro_f1": 0.34010984743024275,
+            "cohen_kappa": 0.38279994563522834,
             "refusal_rate": 0.0,
             "schema_failure_rate": 0.0075,
             "mean_confidence": 0.8272749999999999,
@@ -186,12 +186,19 @@
               0.565
             ],
             "tfidf_accuracy_same_reports": 0.705,
-            "majority_accuracy_same_reports": 0.41
+            "majority_accuracy_same_reports": 0.41,
+            "llm_minus_tfidf": {
+              "estimate": -0.1875,
+              "ci95": [
+                -0.245,
+                -0.13
+              ]
+            }
           },
           "post": {
             "n": 200,
             "accuracy": 0.555,
-            "macro_f1": 0.45098347275859213,
+            "macro_f1": 0.4509834727585922,
             "cohen_kappa": 0.43080071629572786,
             "refusal_rate": 0.0,
             "schema_failure_rate": 0.005,
@@ -275,12 +282,19 @@
               0.62
             ],
             "tfidf_accuracy_same_reports": 0.67,
-            "majority_accuracy_same_reports": 0.35
+            "majority_accuracy_same_reports": 0.35,
+            "llm_minus_tfidf": {
+              "estimate": -0.115,
+              "ci95": [
+                -0.2,
+                -0.03
+              ]
+            }
           },
           "pre": {
             "n": 200,
             "accuracy": 0.48,
-            "macro_f1": 0.18778604907637161,
+            "macro_f1": 0.18778604907637167,
             "cohen_kappa": 0.3262721471836232,
             "refusal_rate": 0.0,
             "schema_failure_rate": 0.01,
@@ -364,7 +378,14 @@
               0.545
             ],
             "tfidf_accuracy_same_reports": 0.74,
-            "majority_accuracy_same_reports": 0.47
+            "majority_accuracy_same_reports": 0.47,
+            "llm_minus_tfidf": {
+              "estimate": -0.26,
+              "ci95": [
+                -0.3401249999999998,
+                -0.185
+              ]
+            }
           },
           "memorisation": {
             "n_pre": 200,
@@ -400,7 +421,7 @@
           "all": {
             "n": 400,
             "accuracy": 0.705,
-            "macro_f1": 0.4559161513405546,
+            "macro_f1": 0.4559161513405545,
             "cohen_kappa": 0.5929244754159156,
             "refusal_rate": 0.0,
             "schema_failure_rate": 0.0075,
@@ -484,12 +505,19 @@
               0.7525
             ],
             "tfidf_accuracy_same_reports": 0.705,
-            "majority_accuracy_same_reports": 0.41
+            "majority_accuracy_same_reports": 0.41,
+            "llm_minus_tfidf": {
+              "estimate": 0.0,
+              "ci95": [
+                -0.0475,
+                0.045
+              ]
+            }
           },
           "post": {
             "n": 200,
             "accuracy": 0.715,
-            "macro_f1": 0.5152825789493548,
+            "macro_f1": 0.5152825789493549,
             "cohen_kappa": 0.6191621567448385,
             "refusal_rate": 0.0,
             "schema_failure_rate": 0.01,
@@ -573,13 +601,20 @@
               0.775
             ],
             "tfidf_accuracy_same_reports": 0.67,
-            "majority_accuracy_same_reports": 0.35
+            "majority_accuracy_same_reports": 0.35,
+            "llm_minus_tfidf": {
+              "estimate": 0.045,
+              "ci95": [
+                -0.02512499999999978,
+                0.115
+              ]
+            }
           },
           "pre": {
             "n": 200,
             "accuracy": 0.695,
-            "macro_f1": 0.31761267010135785,
-            "cohen_kappa": 0.5582431111272043,
+            "macro_f1": 0.3176126701013579,
+            "cohen_kappa": 0.5582431111272042,
             "refusal_rate": 0.0,
             "schema_failure_rate": 0.005,
             "mean_confidence": 0.8701499999999999,
@@ -662,7 +697,14 @@
               0.7551249999999993
             ],
             "tfidf_accuracy_same_reports": 0.74,
-            "majority_accuracy_same_reports": 0.47
+            "majority_accuracy_same_reports": 0.47,
+            "llm_minus_tfidf": {
+              "estimate": -0.045,
+              "ci95": [
+                -0.1,
+                0.015
+              ]
+            }
           },
           "memorisation": {
             "n_pre": 200,
@@ -698,7 +740,7 @@
           "all": {
             "n": 400,
             "accuracy": 0.7075,
-            "macro_f1": 0.43843446763904015,
+            "macro_f1": 0.4384344676390401,
             "cohen_kappa": 0.5914340838258532,
             "refusal_rate": 0.0,
             "schema_failure_rate": 0.01,
@@ -782,12 +824,19 @@
               0.7525
             ],
             "tfidf_accuracy_same_reports": 0.705,
-            "majority_accuracy_same_reports": 0.41
+            "majority_accuracy_same_reports": 0.41,
+            "llm_minus_tfidf": {
+              "estimate": 0.0025,
+              "ci95": [
+                -0.045,
+                0.05
+              ]
+            }
           },
           "post": {
             "n": 200,
             "accuracy": 0.715,
-            "macro_f1": 0.4841214712601795,
+            "macro_f1": 0.4841214712601794,
             "cohen_kappa": 0.6127980436111676,
             "refusal_rate": 0.0,
             "schema_failure_rate": 0.005,
@@ -871,7 +920,14 @@
               0.775
             ],
             "tfidf_accuracy_same_reports": 0.67,
-            "majority_accuracy_same_reports": 0.35
+            "majority_accuracy_same_reports": 0.35,
+            "llm_minus_tfidf": {
+              "estimate": 0.045,
+              "ci95": [
+                -0.025,
+                0.11
+              ]
+            }
           },
           "pre": {
             "n": 200,
@@ -960,7 +1016,14 @@
               0.765
             ],
             "tfidf_accuracy_same_reports": 0.74,
-            "majority_accuracy_same_reports": 0.47
+            "majority_accuracy_same_reports": 0.47,
+            "llm_minus_tfidf": {
+              "estimate": -0.04,
+              "ci95": [
+                -0.105,
+                0.025124999999999318
+              ]
+            }
           },
           "memorisation": {
             "n_pre": 200,
@@ -996,7 +1059,7 @@
           "all": {
             "n": 200,
             "accuracy": 0.545,
-            "macro_f1": 0.38337651743163553,
+            "macro_f1": 0.3833765174316355,
             "cohen_kappa": 0.4126379655328213,
             "refusal_rate": 0.0,
             "schema_failure_rate": 0.0,
@@ -1080,7 +1143,14 @@
               0.615
             ],
             "tfidf_accuracy_same_reports": 0.705,
-            "majority_accuracy_same_reports": 0.405
+            "majority_accuracy_same_reports": 0.405,
+            "llm_minus_tfidf": {
+              "estimate": -0.16,
+              "ci95": [
+                -0.24,
+                -0.075
+              ]
+            }
           },
           "post": {
             "n": 100,
@@ -1169,12 +1239,19 @@
               0.65
             ],
             "tfidf_accuracy_same_reports": 0.66,
-            "majority_accuracy_same_reports": 0.37
+            "majority_accuracy_same_reports": 0.37,
+            "llm_minus_tfidf": {
+              "estimate": -0.1,
+              "ci95": [
+                -0.22,
+                0.01
+              ]
+            }
           },
           "pre": {
             "n": 100,
             "accuracy": 0.53,
-            "macro_f1": 0.20965201465201466,
+            "macro_f1": 0.2096520146520146,
             "cohen_kappa": 0.3760785875481216,
             "refusal_rate": 0.0,
             "schema_failure_rate": 0.0,
@@ -1258,7 +1335,14 @@
               0.64
             ],
             "tfidf_accuracy_same_reports": 0.75,
-            "majority_accuracy_same_reports": 0.44
+            "majority_accuracy_same_reports": 0.44,
+            "llm_minus_tfidf": {
+              "estimate": -0.22,
+              "ci95": [
+                -0.34,
+                -0.09
+              ]
+            }
           },
           "memorisation": {
             "n_pre": 100,
@@ -2009,12 +2093,19 @@
               0.3925
             ],
             "tfidf_accuracy_same_reports": 0.705,
-            "majority_accuracy_same_reports": 0.41
+            "majority_accuracy_same_reports": 0.41,
+            "llm_minus_tfidf": {
+              "estimate": -0.3575,
+              "ci95": [
+                -0.42,
+                -0.29493750000000035
+              ]
+            }
           },
           "post": {
             "n": 200,
             "accuracy": 0.43,
-            "macro_f1": 0.3972997231370437,
+            "macro_f1": 0.39729972313704365,
             "cohen_kappa": 0.28125591072441836,
             "refusal_rate": 0.0,
             "schema_failure_rate": 0.0,
@@ -2098,13 +2189,20 @@
               0.495
             ],
             "tfidf_accuracy_same_reports": 0.67,
-            "majority_accuracy_same_reports": 0.35
+            "majority_accuracy_same_reports": 0.35,
+            "llm_minus_tfidf": {
+              "estimate": -0.24,
+              "ci95": [
+                -0.33,
+                -0.15
+              ]
+            }
           },
           "pre": {
             "n": 200,
             "accuracy": 0.265,
             "macro_f1": 0.1689290826203904,
-            "cohen_kappa": 0.117249662212881,
+            "cohen_kappa": 0.11724966221288098,
             "refusal_rate": 0.0,
             "schema_failure_rate": 0.0,
             "mean_confidence": 0.86945,
@@ -2187,7 +2285,14 @@
               0.33
             ],
             "tfidf_accuracy_same_reports": 0.74,
-            "majority_accuracy_same_reports": 0.47
+            "majority_accuracy_same_reports": 0.47,
+            "llm_minus_tfidf": {
+              "estimate": -0.475,
+              "ci95": [
+                -0.56,
+                -0.385
+              ]
+            }
           },
           "memorisation": {
             "n_pre": 200,
@@ -2307,13 +2412,20 @@
               0.7275624999999997
             ],
             "tfidf_accuracy_same_reports": 0.705,
-            "majority_accuracy_same_reports": 0.41
+            "majority_accuracy_same_reports": 0.41,
+            "llm_minus_tfidf": {
+              "estimate": -0.025,
+              "ci95": [
+                -0.0725,
+                0.0225
+              ]
+            }
           },
           "post": {
             "n": 200,
             "accuracy": 0.665,
-            "macro_f1": 0.4989716465068578,
-            "cohen_kappa": 0.5574490571022822,
+            "macro_f1": 0.4989716465068577,
+            "cohen_kappa": 0.5574490571022821,
             "refusal_rate": 0.0,
             "schema_failure_rate": 0.0,
             "mean_confidence": 0.9005999999999998,
@@ -2396,7 +2508,14 @@
               0.73
             ],
             "tfidf_accuracy_same_reports": 0.67,
-            "majority_accuracy_same_reports": 0.35
+            "majority_accuracy_same_reports": 0.35,
+            "llm_minus_tfidf": {
+              "estimate": -0.005,
+              "ci95": [
+                -0.07,
+                0.06
+              ]
+            }
           },
           "pre": {
             "n": 200,
@@ -2485,7 +2604,14 @@
               0.76
             ],
             "tfidf_accuracy_same_reports": 0.74,
-            "majority_accuracy_same_reports": 0.47
+            "majority_accuracy_same_reports": 0.47,
+            "llm_minus_tfidf": {
+              "estimate": -0.045,
+              "ci95": [
+                -0.105,
+                0.015
+              ]
+            }
           },
           "memorisation": {
             "n_pre": 200,
@@ -2605,13 +2731,20 @@
               0.735
             ],
             "tfidf_accuracy_same_reports": 0.705,
-            "majority_accuracy_same_reports": 0.41
+            "majority_accuracy_same_reports": 0.41,
+            "llm_minus_tfidf": {
+              "estimate": -0.0175,
+              "ci95": [
+                -0.0650624999999999,
+                0.03
+              ]
+            }
           },
           "post": {
             "n": 200,
             "accuracy": 0.685,
             "macro_f1": 0.3950977218711772,
-            "cohen_kappa": 0.5718072452932781,
+            "cohen_kappa": 0.5718072452932782,
             "refusal_rate": 0.0,
             "schema_failure_rate": 0.0,
             "mean_confidence": 0.9035,
@@ -2694,7 +2827,14 @@
               0.745
             ],
             "tfidf_accuracy_same_reports": 0.67,
-            "majority_accuracy_same_reports": 0.35
+            "majority_accuracy_same_reports": 0.35,
+            "llm_minus_tfidf": {
+              "estimate": 0.015,
+              "ci95": [
+                -0.06,
+                0.09
+              ]
+            }
           },
           "pre": {
             "n": 200,
@@ -2783,7 +2923,14 @@
               0.755
             ],
             "tfidf_accuracy_same_reports": 0.74,
-            "majority_accuracy_same_reports": 0.47
+            "majority_accuracy_same_reports": 0.47,
+            "llm_minus_tfidf": {
+              "estimate": -0.05,
+              "ci95": [
+                -0.115,
+                0.015
+              ]
+            }
           },
           "memorisation": {
             "n_pre": 200,
@@ -2819,8 +2966,8 @@
           "all": {
             "n": 200,
             "accuracy": 0.385,
-            "macro_f1": 0.2985572260447104,
-            "cohen_kappa": 0.2509135200974421,
+            "macro_f1": 0.29855722604471036,
+            "cohen_kappa": 0.25091352009744217,
             "refusal_rate": 0.0,
             "schema_failure_rate": 0.0,
             "mean_confidence": 0.8638499999999999,
@@ -2903,7 +3050,14 @@
               0.45
             ],
             "tfidf_accuracy_same_reports": 0.705,
-            "majority_accuracy_same_reports": 0.405
+            "majority_accuracy_same_reports": 0.405,
+            "llm_minus_tfidf": {
+              "estimate": -0.32,
+              "ci95": [
+                -0.405,
+                -0.23
+              ]
+            }
           },
           "post": {
             "n": 100,
@@ -2992,13 +3146,20 @@
               0.56
             ],
             "tfidf_accuracy_same_reports": 0.66,
-            "majority_accuracy_same_reports": 0.37
+            "majority_accuracy_same_reports": 0.37,
+            "llm_minus_tfidf": {
+              "estimate": -0.2,
+              "ci95": [
+                -0.32,
+                -0.08
+              ]
+            }
           },
           "pre": {
             "n": 100,
             "accuracy": 0.31,
             "macro_f1": 0.3037064088793412,
-            "cohen_kappa": 0.1680733060043405,
+            "cohen_kappa": 0.16807330600434048,
             "refusal_rate": 0.0,
             "schema_failure_rate": 0.0,
             "mean_confidence": 0.8588999999999998,
@@ -3081,7 +3242,14 @@
               0.4
             ],
             "tfidf_accuracy_same_reports": 0.75,
-            "majority_accuracy_same_reports": 0.44
+            "majority_accuracy_same_reports": 0.44,
+            "llm_minus_tfidf": {
+              "estimate": -0.44,
+              "ci95": [
+                -0.5602499999999996,
+                -0.31
+              ]
+            }
           },
           "memorisation": {
             "n_pre": 100,
@@ -3743,7 +3911,7 @@
             "n": 100,
             "accuracy": 0.72,
             "macro_f1": 0.4898203062760025,
-            "cohen_kappa": 0.6174340756934008,
+            "cohen_kappa": 0.6174340756934007,
             "refusal_rate": 0.0,
             "schema_failure_rate": 0.0,
             "mean_confidence": 0.9099999999999997,
@@ -3826,7 +3994,14 @@
               0.81
             ],
             "tfidf_accuracy_same_reports": 0.58,
-            "majority_accuracy_same_reports": 0.33
+            "majority_accuracy_same_reports": 0.33,
+            "llm_minus_tfidf": {
+              "estimate": 0.14,
+              "ci95": [
+                0.04,
+                0.25
+              ]
+            }
           },
           "post": {
             "n": 50,
@@ -3915,7 +4090,14 @@
               0.8
             ],
             "tfidf_accuracy_same_reports": 0.62,
-            "majority_accuracy_same_reports": 0.28
+            "majority_accuracy_same_reports": 0.28,
+            "llm_minus_tfidf": {
+              "estimate": 0.06,
+              "ci95": [
+                -0.1,
+                0.22
+              ]
+            }
           },
           "pre": {
             "n": 50,
@@ -4004,7 +4186,14 @@
               0.88
             ],
             "tfidf_accuracy_same_reports": 0.54,
-            "majority_accuracy_same_reports": 0.38
+            "majority_accuracy_same_reports": 0.38,
+            "llm_minus_tfidf": {
+              "estimate": 0.22,
+              "ci95": [
+                0.06,
+                0.38
+              ]
+            }
           },
           "memorisation": {
             "n_pre": 50,

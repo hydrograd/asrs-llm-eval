@@ -1,107 +1,204 @@
-# Do LLMs agree with expert aviation safety coders?
+# Large Language Models for Coding Aviation Safety Reports
 
-**Live dashboard: [aviation-llm-eval.streamlit.app](https://aviation-llm-eval.streamlit.app/)**
+*Agreement, calibration, memorisation and robustness on NASA ASRS incident narratives*
 
-[![The dashboard: title, abstract, collection progress and the baselines to beat](docs/dashboard.png)](https://aviation-llm-eval.streamlit.app/)
+**Dashboard: [aviation-llm-eval.streamlit.app](https://aviation-llm-eval.streamlit.app/)** ·
+results: [`results/results.json`](results/results.json) · every model call:
+[`results/traces/`](results/traces/)
 
-<sub>Dashboard screenshot, 14 November 2026 (layout only; the charts below and the live site carry
-current numbers). A [keep-alive job](.github/workflows/keepalive.yml) visits the site every two
-hours so it does not fall asleep; if it ever shows a sleep page, it wakes in under a minute.</sub>
+[![Dashboard: title, abstract, collection progress and baselines](docs/dashboard.png)](https://aviation-llm-eval.streamlit.app/)
 
-> **Status: collecting data. Every model result below is provisional.** The experiment runs
-> daily inside free-tier API limits; the charts, the dashboard and
-> [`results/results.json`](results/results.json) regenerate after every run. The baselines are final.
+Analysts at NASA's [Aviation Safety Reporting System](https://asrs.arc.nasa.gov) (ASRS) assign
+each confidential incident narrative a **Primary Problem**: the factor they judge most prominent
+(Aircraft, Human Factors, Procedure, Weather and 14 others). This project asks three large
+language models to assign the same code to 4,985 held-out narratives, and compares every answer
+with the analysts' code *and* with two baselines scored on exactly the same reports.
 
-NASA's [Aviation Safety Reporting System](https://asrs.arc.nasa.gov) (ASRS) is a public
-database of confidential incident narratives written by pilots, controllers and technicians. ASRS
-analysts code each one, including its **Primary Problem**: the single most prominent factor
-(Human Factors, Aircraft, Procedure, Weather, and 14 others).
+Data collection finished on 17 November 2026 (4,100 model jobs across 9–17 November, on free
+API tiers). All numbers below are final, with 95% bootstrap confidence intervals.
 
-This project asks three LLMs to code the same narratives and measures:
+## Findings
 
-1. **Agreement with the analysts**, against two baselines that cost nothing: always predicting the
-   most common category, and a TF-IDF + logistic regression classifier.
-2. **Calibration**: when a model says it is 80% sure, is it right 80% of the time?
-3. **Memorisation**: is accuracy higher on reports filed *before* the model's training cutoff
-   than after it, beyond what the reports' own difficulty explains?
-4. **Retrieval**: does showing five similar, already-coded reports change the answer, does it
-   matter whether they are found by keywords (TF-IDF) or by sentence embeddings, and will a
-   model choose to look them up when offered retrieval as a tool?
-5. **Robustness**: do irrelevant changes to the prompt change the answer more often than simply
-   asking again does?
+**1. A word-frequency classifier matches the open-weight models at their best.** Without help,
+gpt-oss-120b and gpt-oss-20b agree with the analysts on 51.7% and 34.7% of reports, against
+70.5% for TF-IDF + logistic regression on the same reports (differences −0.19 [−0.25, −0.13]
+and −0.36 [−0.42, −0.30]). Given five similar coded reports they draw level with it
+(120b: +0.000 [−0.048, +0.045]; 20b: −0.025 [−0.072, +0.022]) but do not beat it.
+Gemini 3.6 Flash, a closed-weight model run without retrieval, does beat it: 0.72 against 0.58,
++0.14 [+0.04, +0.25].
+
+**2. Retrieval carries most of the performance, largely by teaching the coding scheme.**
+Showing five similar training reports adds +0.19 [+0.14, +0.24] for gpt-oss-120b and
++0.33 [+0.28, +0.39] for gpt-oss-20b. Much of the gain comes from correcting one confusion:
+without retrieval the models label aircraft faults *Equipment / Tooling*, a category the analysts
+use for 0.35% of reports (tools and ground equipment). That single confusion is 19% of
+gpt-oss-120b's errors and 30% of gpt-oss-20b's; with retrieval the models' use of the category
+falls from 12% and 24% of answers to 1% and 3%.
+
+**3. Offered retrieval as a tool, the models almost never use it.** Given a
+`find_similar_reports` function under a neutral prompt, gpt-oss-120b called it on 0 of 200
+reports and gpt-oss-20b on 6 of 200, giving up most of the benefit above: −0.17 [−0.24, −0.10]
+and −0.30 [−0.38, −0.22] against always retrieving.
+
+**4. Dense embeddings retrieve no better than keyword matching here.** Before any language model
+is involved, the share of the five retrieved reports carrying the right code is 0.549 for TF-IDF
+and 0.551 for `bge-small` embeddings (paired difference +0.001 [−0.006, +0.008]). Downstream the
+two are indistinguishable too: +0.003 [−0.033, +0.037] and +0.007 [−0.028, +0.043] on all 400
+reports per model.
+
+**5. No evidence that the gpt-oss models memorised ASRS reports.** Their accuracy is not higher
+on reports written before their June 2024 training cutoff; it is lower (adjusted differences
+−0.15 [−0.27, −0.04] and −0.24 [−0.37, −0.11]), partly because the earlier sample holds more
+*Aircraft* reports (47% against 35%), the category they handle worst. Gemini's lead over TF-IDF
+is concentrated in reports from before its cutoff (+0.22 [+0.06, +0.38] before, +0.06
+[−0.10, +0.22] after), which is the pattern memorisation would produce, but with 50 reports a
+side its adjusted difference (+0.16 [−0.06, +0.38]) is not significant.
+
+**6. The models are confidently wrong.** Without retrieval gpt-oss-120b states a mean confidence
+of 0.83 while being right 52% of the time, and gpt-oss-20b 0.88 at 35%: expected calibration
+errors of 0.31 and 0.53, against 0.10 for TF-IDF. Retrieval roughly halves them (0.17, 0.23).
+Gemini is better calibrated (0.19).
+
+**7. The order of the category list changes a third of the answers.** Reversing the list of
+allowed categories changes 28% [19%, 37%] of gpt-oss-120b's answers and 34% [25%, 44%] of
+gpt-oss-20b's, against a noise floor (the same prompt asked again) of 6% and 2%. Appending a
+paragraph of neutral text changes 22–23% of answers without changing accuracy; a paragraph that
+happens to mention category names *raises* gpt-oss-120b's accuracy by +0.11 [+0.04, +0.19],
+because it steers answers towards those categories.
 
 ## The number to beat
 
-Scored on all 4,985 held-out reports (95% bootstrap CIs):
+Scored on all 4,985 held-out reports:
 
 | Baseline | Accuracy | Macro-F1 | Cohen's κ | ECE |
 |---|---|---|---|---|
-| Always "Aircraft" (most common class) | 0.343 [0.330, 0.357] | 0.032 | 0.000 | 0.000* |
+| Always "Aircraft" (majority class) | 0.343 [0.330, 0.357] | 0.032 | 0.000 | 0.000* |
 | TF-IDF + logistic regression | **0.638 [0.624, 0.651]** | **0.369** | **0.528** | 0.101 |
 
-\*The majority baseline states the overall class frequency as its confidence, so it is perfectly
-calibrated while being useless. Calibration is reported next to accuracy, never instead of it.
+\*The majority-class predictor states the overall class frequency as its confidence, so it is
+perfectly calibrated while having no skill; calibration is read alongside accuracy, never instead.
 
-Every LLM number is reported next to both baselines **scored on exactly the same reports**.
+Each model ran on a different sample of the test set (see Design), so every model result is
+compared with both baselines **on exactly the reports that model was run on**. On gpt-oss's 400
+main reports TF-IDF scores 0.705; on Gemini's 100 it scores 0.580.
 
-*Correction, 10 November:* the TF-IDF baseline was first reported as 0.636. Its optimiser had
-stopped short of convergence, which left 29 predictions sensitive to machine-level rounding; the
-Docker reproducibility check caught it rebuilding differently on GitHub. Fitted to convergence it
-is 0.638. Rebuilt on a clean machine it matches to within 0.001 on every metric; one or two
-near-tie predictions can still differ between machines, which CI tolerates up to 0.002.
+## Results
 
-## Live results (provisional)
+### Accuracy by model and condition
 
-![Figure 1](results/charts/accuracy.png)
+| | No retrieval | Sparse retrieval | Dense retrieval | Retrieval as a tool | TF-IDF, same reports |
+|---|---|---|---|---|---|
+| gpt-oss-120b | 0.517 [0.468, 0.565] | 0.705 [0.660, 0.752] | 0.708 [0.662, 0.752] | 0.545 [0.480, 0.615] | 0.705 |
+| gpt-oss-20b | 0.347 [0.302, 0.393] | 0.680 [0.632, 0.728] | 0.688 [0.642, 0.735] | 0.385 [0.320, 0.450] | 0.705 |
+| gemini-3.6-flash | 0.720 [0.630, 0.810] | – | – | – | 0.580 |
 
-**Figure 1.** Accuracy against the ASRS analyst's code, (a) without and (b) with five retrieved,
-already-coded similar reports in the prompt. Lines are 95% bootstrap CIs; diamonds and ticks are
-the two baselines scored on exactly the same reports.
+n = 400 per gpt-oss cell (200 for the tool condition), 100 for Gemini. Macro-F1, κ and Brier
+scores are in `results.json`.
 
-![Figure 2](results/charts/memorisation.png)
+![Figure 1: accuracy by model and condition](results/charts/accuracy.png)
 
-**Figure 2.** Accuracy before the training cutoff minus after. Circles: raw gap. Squares: gap net
-of the TF-IDF baseline's gap on the same reports. n is reports before + after.
+**Figure 1.** Accuracy by model and condition. Lines are 95% bootstrap CIs; diamonds and ticks
+are the TF-IDF and majority-class baselines on the same reports as each row.
 
-![Figure 3](results/charts/calibration.png)
+### Retrieval
 
-**Figure 3.** Reliability diagrams without retrieval; dots sized by reports per confidence bin.
-Below the dashed diagonal (shaded) is overconfidence.
+| Paired difference in accuracy | gpt-oss-120b | gpt-oss-20b |
+|---|---|---|
+| Sparse retrieval − none (n = 400) | +0.188 [+0.138, +0.237] | +0.333 [+0.275, +0.390] |
+| Dense retrieval − none (n = 400) | +0.190 [+0.142, +0.237] | +0.340 [+0.280, +0.395] |
+| Dense − sparse (n = 400) | +0.003 [−0.033, +0.037] | +0.007 [−0.028, +0.043] |
+| Tool − none (n = 200) | +0.025 [−0.025, +0.080] | +0.025 [−0.035, +0.085] |
+| Tool − sparse (n = 200) | −0.165 [−0.235, −0.100] | −0.295 [−0.375, −0.220] |
+| Tool called | 0 of 200 | 6 of 200 (all 6 correct) |
 
-### Retrieval quality, before any LLM (final)
-
-Over all 4,985 test reports, how often the 5 retrieved training reports carry the same analyst
-code, and the accuracy of simply taking their majority vote
+Retrieval quality without any language model, over all 4,985 test reports
 ([`results/retrieval_quality.json`](results/retrieval_quality.json)):
 
-| Retriever | Same code among top 5 | 5-NN vote accuracy |
+| Retriever | Same code among top 5 | 5-nearest-neighbour vote accuracy |
 |---|---|---|
 | Sparse (TF-IDF) | 0.549 [0.540, 0.559] | 0.644 [0.631, 0.658] |
 | Dense (bge-small embeddings) | 0.551 [0.540, 0.560] | 0.635 [0.622, 0.648] |
 
-Dense minus sparse, paired: **+0.001 [−0.006, +0.008]**. On this task, dense embeddings retrieve
-no better than keyword matching. Whether the LLMs nonetheless use dense neighbours differently is
-what the dense-retrieval condition measures.
+A five-nearest-neighbour vote alone (0.644) is about as accurate as the trained TF-IDF
+classifier (0.638), which is one reason the retrieval-augmented models end up close to it.
 
-### Error analysis (provisional)
+### Error analysis
 
-Without retrieval, a large share of the gpt-oss models' errors is a single confusion: they assign
-**Equipment / Tooling** to reports the analysts coded **Aircraft**. In the ASRS taxonomy that
-category covers tools and ground equipment; analysts use it for 87 of 24,925 reports (0.35%).
-
-| Without retrieval | Predicts Equipment / Tooling | On analyst-coded Aircraft reports | Share of its errors |
+| Without retrieval | Most frequent error (analyst → model) | Share of its errors | Uses *Equipment / Tooling* |
 |---|---|---|---|
-| gpt-oss-120b | 12% of reports | Aircraft 50%, Equipment / Tooling 23% | 24% |
-| gpt-oss-20b | 24% of reports | Aircraft 7%, Equipment / Tooling 48% | 37% |
-| gemini-3.6-flash | 0% | Aircraft 93% | – |
+| gpt-oss-120b | Aircraft → Equipment / Tooling | 19% | 11.7% of answers |
+| gpt-oss-20b | Aircraft → Equipment / Tooling | 30% | 24.2% of answers |
+| gemini-3.6-flash | Ambiguous → Human Factors | 29% | 0% |
+| *Analysts* | | | *0.35% of all reports* |
 
-With five retrieved examples the confusion largely disappears (Equipment / Tooling falls to 1–3%
-of answers), which suggests part of retrieval's +19 to +33 point gain comes from conveying ASRS's
-coding conventions rather than facts about the incident. Gemini's most common error is different:
-answering *Human Factors* where the analyst coded *Ambiguous*. The per-model breakdown is in
-[`results/results.json`](results/results.json) (`error_analysis`) and on the dashboard.
+With sparse retrieval the gpt-oss models use *Equipment / Tooling* for 1.3% and 2.8% of answers.
+The second most frequent gpt-oss error, *Aircraft → Human Factors*, is another 11% and 21%.
+Gemini's commonest error is assigning a definite cause where the analyst coded *Ambiguous*: it
+chose *Ambiguous* once, where the analysts did 11 times. Full confusion lists are under `error_analysis` in
+`results.json`.
 
-Probe, noise-floor, dense-retrieval and tool results appear as those jobs run.
+### Training cutoff and memorisation
+
+![Figure 2: accuracy before minus after the training cutoff](results/charts/memorisation.png)
+
+**Figure 2.** Accuracy before the training cutoff minus after it. Circles: raw difference.
+Squares: net of the TF-IDF baseline's difference on the same reports, which controls for later
+reports simply being easier or harder.
+
+| No retrieval | Before cutoff | After cutoff | Raw difference | TF-IDF difference | Adjusted |
+|---|---|---|---|---|---|
+| gpt-oss-120b (June 2024; 200 + 200) | 0.480 | 0.555 | −0.075 [−0.175, +0.015] | +0.070 | −0.145 [−0.265, −0.035] |
+| gpt-oss-20b (June 2024; 200 + 200) | 0.265 | 0.430 | −0.165 [−0.255, −0.070] | +0.070 | −0.235 [−0.365, −0.105] |
+| gemini-3.6-flash (Jan 2025 / Mar 2026; 50 + 50) | 0.760 | 0.680 | +0.080 [−0.100, +0.260] | −0.080 | +0.160 [−0.060, +0.380] |
+
+### Calibration
+
+![Figure 3: reliability diagrams](results/charts/calibration.png)
+
+**Figure 3.** Reliability diagrams without retrieval; points sized by the number of reports in
+each confidence bin. Points below the diagonal are overconfident.
+
+| ECE (Brier) | No retrieval | Sparse retrieval | Mean stated confidence, no retrieval |
+|---|---|---|---|
+| gpt-oss-120b | 0.310 (0.346) | 0.167 (0.212) | 0.83 |
+| gpt-oss-20b | 0.527 (0.491) | 0.227 (0.253) | 0.88 |
+| gemini-3.6-flash | 0.190 (0.225) | – | 0.91 |
+| TF-IDF (full test set) | 0.101 (0.203) | | |
+
+### Robustness to prompt perturbations
+
+Each perturbation changes one element of the prompt on the same 100 reports, and is compared with
+the **noise floor**: how often asking the identical prompt again gives a different answer
+(measured on 20 reports × 10 repeats).
+
+| Answers changed (accuracy change) | gpt-oss-120b | gpt-oss-20b |
+|---|---|---|
+| Noise floor | 6.0% [0.0, 13.3] | 2.0% [0.0, 5.0] |
+| Reversed category order | **28%** [19, 37] (−0.06) | **34%** [25, 44] (−0.05) |
+| Neutral padding | **23%** [15, 31] (−0.03) | **22%** [14, 30] (−0.01) |
+| Padding that names categories | 19% [11, 27] (**+0.11** [+0.04, +0.19]) | **22%** [14, 31] (+0.04) |
+| Abbreviations written out | 8% [3, 13] (+0.03) | 11% [5, 18] (+0.03) |
+
+Bold marks effects whose interval lies wholly above the noise floor's interval, a deliberately
+conservative test: gpt-oss-120b's noise floor rests on 20 reports, so its interval is wide.
+
+![Figure 4: perturbation effects against the noise floor](results/charts/probes.png)
+
+**Figure 4.** Share of answers changed by each perturbation; the shaded band is the noise floor's
+95% interval.
+
+### Reliability and cost
+
+| | Calls | Schema failures | Refusals | Provider errors | Tokens in / out per report | Latency |
+|---|---|---|---|---|---|---|
+| gpt-oss-120b (Groq) | 2,007 | 0.5% | 0 | 0% | 697 / 90 | 0.73 s |
+| gpt-oss-20b (Groq) | 2,000 | 0% | 0 | 0% | 698 / 88 | 0.53 s |
+| gemini-3.6-flash (Google) | 109 | 0% | 0 | 3.7% (overload) | 512 / 57 | 9.5 s |
+
+A schema failure is a first reply that does not match the required JSON; every one was corrected
+on the single retry, so no answer was scored as a refusal. Gemini was 13–18× slower, and was
+returned "high demand" errors on 12 November until the evening (Gemini 3.8 Flash did the same on
+9 November, which is why it was replaced). The model name each provider reported never changed.
 
 ## Design
 
@@ -109,12 +206,13 @@ Probe, noise-floor, dense-retrieval and tool results appear as those jobs run.
 
 - **24,925 ASRS reports**, every month from January 2022 to August 2026, exported from ASRS
   Database Online in date-window batches (the export caps at 5,000) and de-duplicated on report
-  number (ACN).
-- Frozen in [`data/processed/asrs_reports.csv.gz`](data/processed/asrs_reports.csv.gz) with a fixed
-  80/20 stratified train/test split (19,940 / 4,985). Models are only ever evaluated on test
-  reports; retrieval examples and the TF-IDF baseline only ever come from train reports.
-- Target: Primary Problem. Categories with fewer than 30 reports are folded into "Other" (16
-  classes). The models choose from all 18 ASRS values and the same folding is applied to their answers.
+  number.
+- Frozen in [`data/processed/asrs_reports.csv.gz`](data/processed/asrs_reports.csv.gz) with a
+  fixed, stratified 80/20 train/test split (19,940 / 4,985). Models are only evaluated on test
+  reports; retrieval and the TF-IDF baseline only use training reports.
+- Target: Primary Problem. Categories with fewer than 30 reports are merged into *Other*
+  (16 classes). The models choose from all 18 ASRS values and the same merge is applied to their
+  answers.
 
 ### Models and training cutoffs
 
@@ -122,104 +220,88 @@ Probe, noise-floor, dense-retrieval and tool results appear as those jobs run.
 |---|---|---|---|
 | gpt-oss-120b | Groq | June 2024 | [Model card, §2.4](https://arxiv.org/html/2508.10925): *"Our model has a knowledge cutoff of June 2024."* |
 | gpt-oss-20b | Groq | June 2024 | Same model card |
-| gemini-3.6-flash | Google | March 2026, but "limited to January 2025" in some domains | [Model card](https://deepmind.google/models/model-cards/gemini-3-6-flash/) |
+| gemini-3.6-flash | Google | March 2026, "limited to January 2025" in some domains | [Model card](https://deepmind.google/models/model-cards/gemini-3-6-flash/) |
 
-Gemini's model card gives two dates, so reports from January 2025 to March 2026 are **not
-sampled** for it: "before" means before January 2025, "after" means April 2026 onwards. Gemini's
-free tier allows 20 requests a day, so it runs the memorisation comparison only, without
-retrieval, on 50 reports either side of its cutoff (cut from 200 on 10 November, for schedule reasons, after 14 jobs;
-the kept sample is the first 100 jobs of the original plan, so nothing was re-sampled).
+Because Gemini's card gives two dates, reports from January 2025 to March 2026 are not sampled for
+it: "before" is before January 2025 and "after" is April 2026 onwards. Its free tier allows 20
+requests a day, so it ran the memorisation comparison only, without retrieval.
 
-### Experiments (frozen plan: [`results/plan.json`](results/plan.json), 4,100 jobs)
+### Experiments
+
+The job list was frozen before any model call ([`results/plan.json`](results/plan.json); 4,100
+jobs). Additions after review were appended without changing any existing job, run on the same
+reports, and are logged in the plan file.
 
 | | gpt-oss-120b, gpt-oss-20b | gemini-3.6-flash |
 |---|---|---|
-| Main: 200 reports before + 200 after cutoff, with and without retrieval | 800 each | — |
-| Noise floor: 20 reports × 10 identical repeats | 200 each | — |
-| Probes: jargon / label order / padding × 100 reports | 300 each | — |
-| Memorisation: 50 before + 50 after, no retrieval | — | 100 |
-| *Added 10 Nov:* dense retrieval on the same 400 main reports | 400 each | — |
-| *Added 10 Nov:* retrieval as a tool, first 200 main reports (100 + 100) | 200 each | — |
-| *Added 16 Nov:* neutral padding probe, same 100 probe reports | 100 each | — |
+| Main: 200 reports before + 200 after cutoff, with and without sparse retrieval | 800 each | – |
+| Noise floor: 20 reports × 10 identical repeats | 200 each | – |
+| Perturbations: abbreviations, category order, padding × 100 reports | 300 each | – |
+| Memorisation: 50 before + 50 after, no retrieval | – | 100 |
+| *Added 10 Nov:* dense retrieval, same 400 reports | 400 each | – |
+| *Added 10 Nov:* retrieval as a tool, first 200 reports | 200 each | – |
+| *Added 16 Nov:* neutral padding, same 100 reports | 100 each | – |
 
-The two added conditions came from a review on 10 November. They are appended after every
-original job ([`scripts/extend_plan.py`](scripts/extend_plan.py)), so nothing already planned
-moved, and they run on the same reports as the main experiment, so every comparison is paired.
+- **Retrieval** shows the five nearest training reports as their one-line synopsis and the
+  analyst's code. *Sparse*: TF-IDF cosine similarity. *Dense*:
+  [`BAAI/bge-small-en-v1.5`](https://huggingface.co/BAAI/bge-small-en-v1.5) embeddings (revision
+  `5c38ec7`), exact cosine search over ~20,000 vectors; neighbours are precomputed by
+  [`scripts/build_dense_index.py`](scripts/build_dense_index.py) so CI and Docker never load the
+  model. *Tool*: the model may call `find_similar_reports(k)`, which returns exactly what sparse
+  retrieval shows; the only difference is the model's choice.
+- **Perturbations** change one thing each. The neutral padding is checked by a test to contain no
+  category word and is within 10% of the length of the original padding.
 
-- **Retrieval**: the five nearest *training* reports are shown as their one-line synopsis plus
-  the analyst's code (synopses rather than narratives, to fit free-tier token budgets).
-  - *Sparse*: TF-IDF cosine similarity over training narratives.
-  - *Dense*: cosine similarity between sentence embeddings from
-    [`BAAI/bge-small-en-v1.5`](https://huggingface.co/BAAI/bge-small-en-v1.5) (384 dimensions,
-    pinned to revision `5c38ec7`), exact search over the ~20,000 training vectors; no approximate
-    index is needed at this scale. Neighbours are precomputed by
-    [`scripts/build_dense_index.py`](scripts/build_dense_index.py) and committed, so the runner,
-    CI and Docker never load the model.
-  - *As a tool*: the model is offered `find_similar_reports(k)` (k = 1–5) and decides whether to
-    call it. The tool returns exactly what sparse retrieval shows, so the only difference from
-    always retrieving is the model's choice. Its use rate is reported with a CI.
-- **Probes** change one thing and re-run the same reports: *jargon* spells out 43 aviation
-  abbreviations (ATC → air traffic control); *order* reverses the category list; *padding* appends
-  a paragraph of generic text. (ASRS reports are already de-identified, so the usual
-  name-anonymisation probe does not apply.)
-  - *Correction, 16 November:* the original padding paragraph was meant to be uninformative but
-    names four categories ("procedures, aircraft systems, airports and weather"). It shifted
-    gpt-oss-120b's answers towards *Aircraft* (6 → 14 of 45 reports), which is where its apparent
-    +0.22 accuracy gain came from. It is kept and reported as **padding with category terms**: a
-    test of whether incidental category words steer the answer. A second **neutral padding**
-    paragraph of the same length, checked by a test to contain no category word, measures the
-    effect of added text alone on the same 100 reports.
-- **Noise floor**: how often two identical prompts at temperature 0 give different answers. A
-  probe only matters if it changes answers more often than that.
+### Scoring rules (fixed before the results; embedded in `results.json`)
 
-### Scoring rules (fixed before the results; also embedded in `results.json`)
-
-- A **refusal** (reply fails the schema twice, the second time with the error fed back) counts as
-  **wrong** in accuracy and is excluded from calibration. Refusal and schema-failure rates are
-  reported per model.
-- **Provider errors** (overload, quota) are not results; those jobs stay pending and the error
-  rate is reported as availability.
+- A **refusal** (reply fails the schema twice, the second time with the error returned to the
+  model) counts as wrong in accuracy and is excluded from calibration.
+- **Provider errors** (overload, quota) are not results; those jobs were retried on later days and
+  the error rate is reported as availability.
 - **Memorisation** = accuracy before cutoff − accuracy after (different reports: unpaired
-  bootstrap). The later reports might simply be harder, so the same gap is computed for the TF-IDF
-  baseline on the same reports — it cannot have memorised anything — and subtracted.
-- **Retrieval and probe effects** compare the same reports (paired bootstrap).
-- All intervals are 95% percentile bootstrap CIs, 2,000 resamples, seed 42.
+  bootstrap), minus the same difference for TF-IDF on the same reports.
+- **Condition and perturbation effects** compare the same reports (paired bootstrap).
+- All intervals are 95% percentile bootstrap intervals, 2,000 resamples, seed 42.
+
+## Changes made during the study
+
+Recorded here because each one changes what a number means, and each is visible in the commit
+history.
+
+| Date | Change | Why |
+|---|---|---|
+| 9 Nov | Gemini 3.8 Flash replaced by 3.6 Flash before any job ran | 3.8 returned repeated "high demand" errors; 3.6's model card states the same cutoff |
+| 10 Nov | Gemini sample cut from 200 to 50 reports a side, after 14 jobs | Free-tier schedule; the kept sample is the first 100 jobs of the original plan, so nothing was re-sampled |
+| 10 Nov | TF-IDF baseline refitted to convergence: 0.636 → 0.638 | The Docker reproducibility check caught 29 predictions depending on machine-level rounding |
+| 10 Nov, 14 Nov | Provider rejections of malformed model output (`json_validate_failed`, `tool_use_failed`) treated as the model's schema failures, not outages | Otherwise those reports would never be scored, quietly excluding the model's worst cases |
+| 10–11 Nov | Dense-retrieval and tool conditions added, then interleaved with remaining jobs | Reviewer request; interleaving runs conditions on the same days so provider drift cannot pose as a condition effect |
+| 16 Nov | Original padding relabelled "padding that names categories"; neutral padding added | The original text named four categories and steered answers towards *Aircraft* |
 
 ## How it runs
 
 ```
-schema.py    Pydantic model for every answer: category, confidence in [0,1], reason
-providers.py one OpenAI-compatible client for Groq and Gemini, backoff on 429/5xx
-retrieve.py  sparse (TF-IDF) and dense (precomputed embedding) retrieval, training split only
-agent.py     retrieve -> classify -> validate -> one retry with the error fed back -> refusal
-runner.py    frozen plan, per-model daily budgets in each provider's quota timezone,
+schema.py    Pydantic model for every answer: category, confidence in [0, 1], reason
+providers.py one OpenAI-compatible client for Groq and Gemini, with backoff on 429/5xx
+retrieve.py  sparse (TF-IDF) and dense (precomputed embedding) retrieval, training set only
+agent.py     retrieve -> classify -> validate -> one retry with the error -> refusal;
+             the tool-calling loop for the tool condition
+probes.py    the prompt perturbations
+runner.py    frozen plan, per-model daily budgets in each provider's quota day,
              JSONL trace of every call, resumable
-report.py    results.json; charts.py the figures; app/dashboard.py the Streamlit view
+report.py    results.json; charts.py the figures; app/dashboard.py the dashboard
 ```
 
-Every call is traced in [`results/traces/`](results/traces/): prompt hash, model version reported
-by the provider, tokens, latency, raw reply, parse result, retries.
-
-### Running without me
-
-| Workflow | When | What it does |
+| Workflow | Schedule | Purpose |
 |---|---|---|
-| [`tests.yml`](.github/workflows/tests.yml) | every push | 82 tests; builds the Docker image on a clean machine and checks the rebuilt baselines match the committed numbers within 0.002 |
-| [`daily.yml`](.github/workflows/daily.yml) | every 3 hours (only the first run after each quota reset does work) | **Collection.** Runs the next jobs in the frozen plan within each model's free quota, rebuilds results and figures, commits |
-| [`weekly.yml`](.github/workflows/weekly.yml) | Sundays (11:41 UTC, backup 19:17) | **Monitoring.** For each model whose plan is complete, re-asks a fixed panel of reports it has already answered (40 per gpt-oss model, 15 for Gemini) and compares with its original answers |
-| [`keepalive.yml`](.github/workflows/keepalive.yml) | every 2 hours | Opens the dashboard in a headless browser ([`scripts/keep_alive.js`](scripts/keep_alive.js)), clicks Streamlit's wake button if the app is asleep, and fails the run if the dashboard does not render |
-
-Monitoring flags **drift** when a week's agreement with the original answers is clearly below
-what the noise floor allows (the 95% CI's upper bound is under the lower bound expected from
-identical-prompt disagreement), or when the provider reports a model version not seen in the
-original run. That is how a provider silently changing a model behind the same name would show
-up. Both workflows commit only when there are new traces; a skipped or repeated run is harmless
-because budgets and weekly panels are counted from the committed traces.
+| [`tests.yml`](.github/workflows/tests.yml) | every push | 91 tests; builds the Docker image on a clean machine and checks the rebuilt baselines match the committed numbers within 0.002 |
+| [`daily.yml`](.github/workflows/daily.yml) | every 3 hours | Collection within each model's free quota (complete; now finds nothing to do) |
+| [`weekly.yml`](.github/workflows/weekly.yml) | Sundays | Drift monitoring: re-asks a fixed panel (40 reports per gpt-oss model, 15 for Gemini) and flags answers changing beyond the noise floor or a new model version |
+| [`keepalive.yml`](.github/workflows/keepalive.yml) | every 2 hours | Opens the dashboard in a headless browser and wakes it if Streamlit has put it to sleep |
 
 ## Reproduce
 
-With Docker — rebuilds the baselines, `results.json` and every figure from the committed data
-and traces, no API keys needed:
+With Docker, rebuilding the baselines, `results.json` and every figure from the committed data
+and traces (no API keys needed):
 
 ```bash
 docker build -t asrs-llm-eval .
@@ -230,57 +312,64 @@ Or locally:
 
 ```bash
 git clone https://github.com/hydrograd/asrs-llm-eval && cd asrs-llm-eval
-pip install -e ".[dev]"
+pip install -r requirements.lock && pip install --no-deps -e .
 pytest                                   # no network or keys needed
 python scripts/run_baselines.py          # baselines from the frozen dataset
-python scripts/make_report.py            # results.json + figures from the committed traces
-export GROQ_API_KEY=... GEMINI_API_KEY=...
-python scripts/run_experiment.py --status
-python scripts/run_experiment.py         # next batch within today's budgets
-python scripts/run_experiment.py --monitor   # this week's drift panel (completed models only)
+python scripts/make_report.py            # results.json and figures from the committed traces
 streamlit run app/dashboard.py
 ```
 
-The metrics are tested against hand-worked examples, with each expected value derived in a
-comment beside it ([`tests/test_metrics.py`](tests/test_metrics.py)).
+Re-running models needs `GROQ_API_KEY` and `GEMINI_API_KEY`; see
+[`scripts/run_experiment.py`](scripts/run_experiment.py). The metrics are tested against
+hand-worked examples with each expected value derived beside it
+([`tests/test_metrics.py`](tests/test_metrics.py)).
 
 ## Limitations
 
-Written now and kept up to date, not added at the end.
+What these results do not show:
 
-- **The labels are one analyst's judgement.** ASRS does not publish inter-coder agreement, so
-  there is no human ceiling to compare against; "accuracy" here means agreement with the ASRS code.
-- **The models are not given the ASRS coding manual**, only the category names. Lower agreement
-  may partly reflect not knowing ASRS conventions rather than not understanding the incident.
-- **Free-tier sample sizes** give wide intervals: about ±10 points on each gpt-oss memorisation
-  gap and about ±19 for Gemini (50 reports a side). A null result means "no effect larger than the interval", not "no effect".
-- **The difficulty control assumes** that what makes later reports harder for TF-IDF also makes
-  them harder for the LLMs. A shift in category mix could affect the two differently.
-- **Dates are month-level**, so each model's cutoff month is excluded from both sides.
-- **Recent months are thin.** NASA's processing lag means July and August 2026 contain only the
-  reports processed fastest (332 and 40 reports), and they make up part of Gemini's "after" set.
-- **Narratives over 500 words are truncated** (8.9% of reports), and only the first reporter's
-  narrative is used when a report has two.
-- **The retrievers and the model read different amounts of a long narrative.** The model sees at
-  most 500 words (8.9% of reports are cut). Sparse retrieval queries with the *full* narrative, so
-  for those reports part of retrieval's measured gain comes from the retriever reading text the
-  model cannot. Dense retrieval embeds at most 512 tokens (about 420 words; 13.4% of reports are
-  cut), so for long reports it reads *less* than the model. The handling is identical across
-  conditions and reports, so comparisons stay fair, but the dense-vs-sparse comparison carries
-  this asymmetry on the longest ~13% of reports.
-- **Provider models can change during collection.** Every trace records the model version the
-  provider reported; any change will be flagged.
-- **Temperature 0 is not deterministic** on these APIs; the noise floor measures exactly how much.
-- **One small embedding model.** Dense retrieval uses bge-small (33M parameters, 512-token limit,
-  so 13.4% of narratives are truncated when embedded). A larger or domain-tuned model might
-  retrieve better; the comparison is sparse vs *this* dense model.
-- **The tool condition's prompt differs by one sentence.** The base prompt's "Reply with only a
-  JSON object" stopped both models from ever considering the tool, even when the API required a
-  call, so in the tool condition it reads "When you give your final answer, reply with only a JSON
-  object". The tool is neither encouraged nor required. In a live check of 8 reports neither model
-  chose to call it; with an explicit instruction to use it, both called it every time.
+- **Agreement is not correctness.** The reference is one analyst's code. ASRS publishes no
+  inter-coder agreement, so there is no human ceiling, and some "errors" may be defensible
+  readings. Gemini's commonest error, naming a cause where the analyst chose *Ambiguous*, is
+  arguably of that kind.
+- **The models were not given the ASRS coding manual**, only the category names. Their largest
+  error (Finding 2) is a misreading of what one category covers; with the manual's definitions
+  their unaided accuracy would likely be higher. The taxonomy document ASRS publishes lists names
+  only.
+- **Confidence is self-reported.** The models write their confidence as a number in the reply;
+  it is not derived from the model's internal probabilities, as TF-IDF's is. The calibration
+  results describe the confidence the models *state*, which is what a user would see.
+- **One prompt.** Results are for one wording. Reversing the category order alone changes about
+  a third of the answers (Finding 7), so other reasonable prompts could give materially different
+  accuracies.
+- **Three models, two from one family.** The tool and retrieval findings come from the two gpt-oss
+  models only; Gemini ran without retrieval on 100 reports.
+- **The tool result is for a neutral prompt.** The tool was neither encouraged nor required. The
+  base prompt's "Reply with only a JSON object" had to be reworded for this condition because it
+  stopped both models from considering the tool at all. In an informal check, prompts that told
+  the model to use the tool got it called every time; that was not a measured condition.
+- **The memorisation test is weak in both directions.** The adjustment assumes later reports are
+  harder for TF-IDF in the same way as for the models; a shift in category mix breaks that
+  (Finding 5). Gemini's sample is 50 reports a side, so differences under about ±0.2 cannot be
+  detected. A null result means no effect larger than the interval, not no effect.
+- **Recent months are thin.** NASA's processing lag leaves July and August 2026 with 332 and 40
+  reports, the ones processed fastest; they are part of Gemini's "after" sample.
+- **Text length.** Narratives over 500 words are cut for the model (8.9% of reports) and only the
+  first reporter's narrative is used. Sparse retrieval reads the full narrative and dense
+  retrieval its first 512 tokens (13.4% cut), so on long reports the retrievers see slightly
+  different text from the model and from each other.
+- **One small embedding model.** "Dense equals sparse" is for `bge-small-en-v1.5`; a larger or
+  domain-tuned model might retrieve better.
+- **Drift detection has a blind spot.** The weekly monitor flags a change in the reported model
+  name or in answers beyond the noise floor. Groq's backend fingerprint took 54 and 36 distinct
+  values for the two gpt-oss models during collection, so it cannot serve as a version signal,
+  and Gemini reports none. A silent model update that leaves answers on the 40-report panel
+  within the noise floor would go undetected.
+- **The noise floor rests on 20 reports.** Its interval is wide, especially for gpt-oss-120b
+  (0–13%), so the test of whether a perturbation exceeds it is conservative.
+- **Temperature 0 is not deterministic** on these APIs; the noise floor measures by how much.
 
 ## Data
 
-ASRS data is published by NASA; the processed file here is derived from ASRS Database
-Online exports and keeps only the report number, month, synopsis, narrative and Primary Problem.
+ASRS data is published by NASA. The processed file here is derived from ASRS Database Online
+exports and keeps only the report number, month, synopsis, narrative and Primary Problem.

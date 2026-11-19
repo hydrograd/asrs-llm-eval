@@ -193,6 +193,10 @@ def build(cfg: dict, df: pd.DataFrame, traces: pd.DataFrame, plan: list[dict],
                 s["accuracy_ci95"] = _acc_ci(gs.correct.to_numpy(), b)
                 s["tfidf_accuracy_same_reports"] = float(gs.tfidf_correct.mean())
                 s["majority_accuracy_same_reports"] = float(gs.majority_correct.mean())
+                if len(gs) >= 2:      # paired: the LLM and TF-IDF on exactly these reports
+                    s["llm_minus_tfidf"] = _ci(M.paired_diff_ci(
+                        gs.correct.to_numpy(), gs.tfidf_correct.to_numpy(),
+                        n_resamples=b["n_resamples"], ci=b["ci"], seed=b["seed"]))
                 entry[side] = s
             entry["memorisation"] = memorisation(g, b)
             r["main"][cond] = entry

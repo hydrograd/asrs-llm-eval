@@ -174,3 +174,14 @@ def test_error_analysis_counts_confusions_and_usage():
                                        "share_of_errors": pytest.approx(2 / 3)}
     assert ea["category_usage"]["Aircraft"] == {"analyst_share": 0.75, "model_share": 0.5}
     assert ea["category_usage"]["Weather"]["analyst_share"] == 0.0
+
+
+def test_llm_minus_tfidf_is_paired_on_the_same_reports():
+    # LLM right on all four; TF-IDF right on 1, 2 (pre) and wrong on 3, 4 (post)
+    rows = [tr(1, "pre", "Aircraft", "Aircraft"), tr(2, "pre", "Weather", "Weather"),
+            tr(3, "post", "Weather", "Weather"), tr(4, "post", "Aircraft", "Aircraft")]
+    tfidf = {1: "Aircraft", 2: "Weather", 3: "Aircraft", 4: "Weather"}
+    a = build(rows, tfidf)["main"]["no_retrieval"]
+    assert a["all"]["llm_minus_tfidf"]["estimate"] == pytest.approx(0.5)
+    assert a["pre"]["llm_minus_tfidf"]["estimate"] == pytest.approx(0.0)
+    assert a["post"]["llm_minus_tfidf"]["estimate"] == pytest.approx(1.0)

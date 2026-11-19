@@ -185,3 +185,11 @@ def test_llm_minus_tfidf_is_paired_on_the_same_reports():
     assert a["all"]["llm_minus_tfidf"]["estimate"] == pytest.approx(0.5)
     assert a["pre"]["llm_minus_tfidf"]["estimate"] == pytest.approx(0.0)
     assert a["post"]["llm_minus_tfidf"]["estimate"] == pytest.approx(1.0)
+
+
+def test_monitoring_reports_panel_size():
+    cfg = {**CFG, "monitoring": {"panel": {"main": 40, "memorisation": 15}}}
+    rows = [tr(1, "pre", "Aircraft", "Aircraft"),
+            tr(1, "pre", "Aircraft", "Aircraft", experiment="monitor", run="2026-W47")]
+    res = report.build(cfg, DF, pd.DataFrame(rows), [{"model": "m"}], {}, "Aircraft")
+    assert res["models"]["m"]["monitoring"]["panel_size"] == 40

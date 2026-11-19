@@ -1,5 +1,5 @@
 {
-  "generated": "2026-11-19T16:43:11+00:00",
+  "generated": "2026-11-19T17:50:31+00:00",
   "scoring_rules": "(stated here because every number depends on them):\n- Predictions use the full ASRS label set; they are folded into \"Other\" with the same\n  rare-class mapping as the human labels before comparison.\n- A refusal (schema failed twice) counts as WRONG in accuracy, macro-F1 and kappa, and is\n  excluded from calibration (it has no confidence). Refusal rates are reported separately.\n- Provider errors are not results: those jobs are still pending and are reported only as\n  an availability figure.\n- Baselines are scored on exactly the same reports as each model result.\n- Memorisation = accuracy(before cutoff) - accuracy(after cutoff), different reports, so an\n  unpaired bootstrap. Because the \"after\" reports could simply be harder, the same gap is\n  computed for the TF-IDF baseline (which cannot have memorised anything) and subtracted:\n  the adjusted gap is the LLM's drop beyond what the reports' difficulty explains.\n- Retrieval and probe effects compare the same reports, so a paired bootstrap.\n- The noise floor is how often an identical prompt gets a different answer; every probe's\n  answer-change rate is compared with it.",
   "baselines_full_test_pool": {
     "majority": {
@@ -102,7 +102,7 @@
           "all": {
             "n": 400,
             "accuracy": 0.5175,
-            "macro_f1": 0.34010984743024275,
+            "macro_f1": 0.3401098474302429,
             "cohen_kappa": 0.38279994563522834,
             "refusal_rate": 0.0,
             "schema_failure_rate": 0.0075,
@@ -198,7 +198,7 @@
           "post": {
             "n": 200,
             "accuracy": 0.555,
-            "macro_f1": 0.4509834727585922,
+            "macro_f1": 0.45098347275859213,
             "cohen_kappa": 0.43080071629572786,
             "refusal_rate": 0.0,
             "schema_failure_rate": 0.005,
@@ -517,7 +517,7 @@
           "post": {
             "n": 200,
             "accuracy": 0.715,
-            "macro_f1": 0.5152825789493549,
+            "macro_f1": 0.5152825789493548,
             "cohen_kappa": 0.6191621567448385,
             "refusal_rate": 0.0,
             "schema_failure_rate": 0.01,
@@ -613,7 +613,7 @@
           "pre": {
             "n": 200,
             "accuracy": 0.695,
-            "macro_f1": 0.3176126701013579,
+            "macro_f1": 0.31761267010135785,
             "cohen_kappa": 0.5582431111272042,
             "refusal_rate": 0.0,
             "schema_failure_rate": 0.005,
@@ -740,7 +740,7 @@
           "all": {
             "n": 400,
             "accuracy": 0.7075,
-            "macro_f1": 0.4384344676390401,
+            "macro_f1": 0.43843446763904015,
             "cohen_kappa": 0.5914340838258532,
             "refusal_rate": 0.0,
             "schema_failure_rate": 0.01,
@@ -1059,7 +1059,7 @@
           "all": {
             "n": 200,
             "accuracy": 0.545,
-            "macro_f1": 0.3833765174316355,
+            "macro_f1": 0.38337651743163553,
             "cohen_kappa": 0.4126379655328213,
             "refusal_rate": 0.0,
             "schema_failure_rate": 0.0,
@@ -1251,7 +1251,7 @@
           "pre": {
             "n": 100,
             "accuracy": 0.53,
-            "macro_f1": 0.2096520146520146,
+            "macro_f1": 0.20965201465201466,
             "cohen_kappa": 0.3760785875481216,
             "refusal_rate": 0.0,
             "schema_failure_rate": 0.0,
@@ -2105,7 +2105,7 @@
           "post": {
             "n": 200,
             "accuracy": 0.43,
-            "macro_f1": 0.39729972313704365,
+            "macro_f1": 0.3972997231370437,
             "cohen_kappa": 0.28125591072441836,
             "refusal_rate": 0.0,
             "schema_failure_rate": 0.0,
@@ -2202,7 +2202,7 @@
             "n": 200,
             "accuracy": 0.265,
             "macro_f1": 0.1689290826203904,
-            "cohen_kappa": 0.11724966221288098,
+            "cohen_kappa": 0.11724966221288094,
             "refusal_rate": 0.0,
             "schema_failure_rate": 0.0,
             "mean_confidence": 0.86945,
@@ -2328,7 +2328,7 @@
           "all": {
             "n": 400,
             "accuracy": 0.68,
-            "macro_f1": 0.3791196339781452,
+            "macro_f1": 0.37911963397814524,
             "cohen_kappa": 0.5603414223641954,
             "refusal_rate": 0.0,
             "schema_failure_rate": 0.0,
@@ -2521,7 +2521,7 @@
             "n": 200,
             "accuracy": 0.695,
             "macro_f1": 0.2537866405143293,
-            "cohen_kappa": 0.5574097587520407,
+            "cohen_kappa": 0.5574097587520406,
             "refusal_rate": 0.0,
             "schema_failure_rate": 0.0,
             "mean_confidence": 0.9103,
@@ -2744,7 +2744,7 @@
             "n": 200,
             "accuracy": 0.685,
             "macro_f1": 0.3950977218711772,
-            "cohen_kappa": 0.5718072452932782,
+            "cohen_kappa": 0.5718072452932781,
             "refusal_rate": 0.0,
             "schema_failure_rate": 0.0,
             "mean_confidence": 0.9035,
@@ -2966,7 +2966,7 @@
           "all": {
             "n": 200,
             "accuracy": 0.385,
-            "macro_f1": 0.29855722604471036,
+            "macro_f1": 0.2985572260447104,
             "cohen_kappa": 0.25091352009744217,
             "refusal_rate": 0.0,
             "schema_failure_rate": 0.0,
@@ -3158,7 +3158,7 @@
           "pre": {
             "n": 100,
             "accuracy": 0.31,
-            "macro_f1": 0.3037064088793412,
+            "macro_f1": 0.30370640887934125,
             "cohen_kappa": 0.16807330600434048,
             "refusal_rate": 0.0,
             "schema_failure_rate": 0.0,
@@ -3910,7 +3910,7 @@
           "all": {
             "n": 100,
             "accuracy": 0.72,
-            "macro_f1": 0.4898203062760025,
+            "macro_f1": 0.48982030627600254,
             "cohen_kappa": 0.6174340756934007,
             "refusal_rate": 0.0,
             "schema_failure_rate": 0.0,
@@ -4006,8 +4006,8 @@
           "post": {
             "n": 50,
             "accuracy": 0.68,
-            "macro_f1": 0.588477366255144,
-            "cohen_kappa": 0.5869901910170366,
+            "macro_f1": 0.5884773662551441,
+            "cohen_kappa": 0.5869901910170368,
             "refusal_rate": 0.0,
             "schema_failure_rate": 0.0,
             "mean_confidence": 0.9090000000000003,
@@ -4102,7 +4102,7 @@
           "pre": {
             "n": 50,
             "accuracy": 0.76,
-            "macro_f1": 0.47675438596491226,
+            "macro_f1": 0.4767543859649123,
             "cohen_kappa": 0.6525767226404169,
             "refusal_rate": 0.0,
             "schema_failure_rate": 0.0,
@@ -4340,7 +4340,8 @@
             "drift_flag": false
           }
         },
-        "any_drift": false
+        "any_drift": false,
+        "panel_size": 15
       }
     }
   }

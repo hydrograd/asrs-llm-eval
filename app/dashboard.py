@@ -342,9 +342,27 @@ st.markdown(
     "the noise floor, or a change in the model version reported by the provider, is flagged as "
     "possible drift in the hosted model.")
 if any(m.get("monitoring", {}).get("weeks") for m in models.values()):
+    monitored = [n for n, m in models.items() if (m.get("monitoring") or {}).get("weeks")]
+    waiting = [n for n, m in models.items() if n not in monitored]
+    notes = []
+    for n in monitored:
+        mon = models[n]["monitoring"]
+        size = mon.get("panel_size")
+        for wk, w in sorted(mon["weeks"].items()):
+            if size and w["n"] < size:
+                notes.append(f"In {wk} only {w['n']} of {short(n)}'s {size} panel reports ran, "
+                             f"so that week's interval is wide.")
+        if not mon.get("expected_agreement_from_noise_floor"):
+            notes.append(f"{short(n)} has no noise-floor measurement, so it is flagged only on a "
+                         f"change of reported model version.")
+    if waiting:
+        names = " and ".join(short(n) for n in waiting)
+        notes.append(f"{names} {'is' if len(waiting) == 1 else 'are'} not yet shown: a model is "
+                     f"monitored from the first weekly run after its evaluation is complete.")
     figure("monitoring.png",
-           "Weekly agreement with the original answers, with 95% confidence intervals. The shaded "
-           "band is the agreement expected from the noise floor; orange points are flagged weeks.")
+           "Weekly agreement with the original answers, with 95% confidence intervals, one panel "
+           "per monitored model. The shaded band is the agreement expected from the noise floor; "
+           "orange points are flagged weeks. " + " ".join(notes))
     rows = []
     for name, m in models.items():
         for wk, w in sorted((m.get("monitoring") or {}).get("weeks", {}).items()):

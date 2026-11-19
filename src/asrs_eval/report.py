@@ -221,6 +221,9 @@ def build(cfg: dict, df: pd.DataFrame, traces: pd.DataFrame, plan: list[dict],
         if len(mon):
             r["monitoring"] = monitoring(mon, main[main.condition == "no_retrieval"],
                                          floor, sorted(map(str, main.provider_model.dropna().unique())), b)
+            panel = (cfg.get("monitoring") or {}).get("panel", {}).get(exp_main)
+            if panel:
+                r["monitoring"]["panel_size"] = int(panel)
         out["models"][name] = r
     return out
 

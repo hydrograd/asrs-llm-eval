@@ -294,7 +294,7 @@ report.py    results.json; charts.py the figures; app/dashboard.py the dashboard
 | Workflow | Schedule | Purpose |
 |---|---|---|
 | [`tests.yml`](.github/workflows/tests.yml) | every push | 91 tests; builds the Docker image on a clean machine and checks the rebuilt baselines match the committed numbers within 0.002 |
-| [`daily.yml`](.github/workflows/daily.yml) | every 3 hours | Collection within each model's free quota (complete; now finds nothing to do) |
+| [`daily.yml`](.github/workflows/daily.yml) | manual only | Collection within each model's free quota. Ran every 3 hours from 9 to 17 November; scheduling switched off once collection finished |
 | [`weekly.yml`](.github/workflows/weekly.yml) | Sundays | Drift monitoring: re-asks a fixed panel (40 reports per gpt-oss model, 15 for Gemini) and flags answers changing beyond the noise floor or a new model version |
 | [`keepalive.yml`](.github/workflows/keepalive.yml) | every 2 hours | Opens the dashboard in a headless browser and wakes it if Streamlit has put it to sleep |
 

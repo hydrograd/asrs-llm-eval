@@ -1,5 +1,5 @@
 {
-  "generated": "2026-11-22T18:48:04+00:00",
+  "generated": "2026-11-23T00:26:48+00:00",
   "scoring_rules": "(stated here because every number depends on them):\n- Predictions use the full ASRS label set; they are folded into \"Other\" with the same\n  rare-class mapping as the human labels before comparison.\n- A refusal (schema failed twice) counts as WRONG in accuracy, macro-F1 and kappa, and is\n  excluded from calibration (it has no confidence). Refusal rates are reported separately.\n- Provider errors are not results: those jobs are still pending and are reported only as\n  an availability figure.\n- Baselines are scored on exactly the same reports as each model result.\n- Memorisation = accuracy(before cutoff) - accuracy(after cutoff), different reports, so an\n  unpaired bootstrap. Because the \"after\" reports could simply be harder, the same gap is\n  computed for the TF-IDF baseline (which cannot have memorised anything) and subtracted:\n  the adjusted gap is the LLM's drop beyond what the reports' difficulty explains.\n- Retrieval and probe effects compare the same reports, so a paired bootstrap.\n- The noise floor is how often an identical prompt gets a different answer; every probe's\n  answer-change rate is compared with it.",
   "baselines_full_test_pool": {
     "majority": {
@@ -83,16 +83,16 @@
         "complete": true
       },
       "reliability": {
-        "calls": 2047,
+        "calls": 2087,
         "provider_error_rate": 0.0,
         "legacy_json_mode_rejections": 7,
-        "schema_failure_rate": 0.004901960784313725,
+        "schema_failure_rate": 0.004807692307692308,
         "refusal_rate": 0.0
       },
       "cost_per_item": {
-        "prompt_tokens": 695.2406862745098,
-        "completion_tokens": 90.00882352941177,
-        "latency_s": 0.7266625969715687
+        "prompt_tokens": 693.751923076923,
+        "completion_tokens": 90.00625,
+        "latency_s": 0.7217109494413462
       },
       "provider_model_versions": [
         "openai/gpt-oss-120b"
@@ -102,7 +102,7 @@
           "all": {
             "n": 400,
             "accuracy": 0.5175,
-            "macro_f1": 0.3401098474302429,
+            "macro_f1": 0.3401098474302428,
             "cohen_kappa": 0.38279994563522834,
             "refusal_rate": 0.0,
             "schema_failure_rate": 0.0075,
@@ -295,7 +295,7 @@
             "n": 200,
             "accuracy": 0.48,
             "macro_f1": 0.18778604907637161,
-            "cohen_kappa": 0.3262721471836232,
+            "cohen_kappa": 0.32627214718362324,
             "refusal_rate": 0.0,
             "schema_failure_rate": 0.01,
             "mean_confidence": 0.8240500000000001,
@@ -421,7 +421,7 @@
           "all": {
             "n": 400,
             "accuracy": 0.705,
-            "macro_f1": 0.4559161513405545,
+            "macro_f1": 0.4559161513405546,
             "cohen_kappa": 0.5929244754159156,
             "refusal_rate": 0.0,
             "schema_failure_rate": 0.0075,
@@ -1059,7 +1059,7 @@
           "all": {
             "n": 200,
             "accuracy": 0.545,
-            "macro_f1": 0.3833765174316355,
+            "macro_f1": 0.38337651743163553,
             "cohen_kappa": 0.4126379655328213,
             "refusal_rate": 0.0,
             "schema_failure_rate": 0.0,
@@ -1251,7 +1251,7 @@
           "pre": {
             "n": 100,
             "accuracy": 0.53,
-            "macro_f1": 0.2096520146520146,
+            "macro_f1": 0.20965201465201466,
             "cohen_kappa": 0.3760785875481216,
             "refusal_rate": 0.0,
             "schema_failure_rate": 0.0,
@@ -2000,6 +2000,22 @@
             ],
             "new_versions": [],
             "drift_flag": false
+          },
+          "2026-W48": {
+            "n": 40,
+            "accuracy": 0.45,
+            "agreement_with_original": {
+              "estimate": 0.8,
+              "ci95": [
+                0.675,
+                0.925
+              ]
+            },
+            "versions": [
+              "openai/gpt-oss-120b"
+            ],
+            "new_versions": [],
+            "drift_flag": false
           }
         },
         "any_drift": false,
@@ -2016,16 +2032,16 @@
         "complete": true
       },
       "reliability": {
-        "calls": 2040,
+        "calls": 2080,
         "provider_error_rate": 0.0,
         "legacy_json_mode_rejections": 0,
         "schema_failure_rate": 0.0,
         "refusal_rate": 0.0
       },
       "cost_per_item": {
-        "prompt_tokens": 696.7720588235294,
-        "completion_tokens": 87.51323529411765,
-        "latency_s": 0.52249581368088
+        "prompt_tokens": 695.2538461538461,
+        "completion_tokens": 87.48846153846154,
+        "latency_s": 0.5177924922879785
       },
       "provider_model_versions": [
         "openai/gpt-oss-20b"
@@ -2131,7 +2147,7 @@
           "post": {
             "n": 200,
             "accuracy": 0.43,
-            "macro_f1": 0.3972997231370438,
+            "macro_f1": 0.3972997231370437,
             "cohen_kappa": 0.28125591072441836,
             "refusal_rate": 0.0,
             "schema_failure_rate": 0.0,
@@ -2227,7 +2243,7 @@
           "pre": {
             "n": 200,
             "accuracy": 0.265,
-            "macro_f1": 0.16892908262039041,
+            "macro_f1": 0.1689290826203904,
             "cohen_kappa": 0.11724966221288098,
             "refusal_rate": 0.0,
             "schema_failure_rate": 0.0,
@@ -2354,7 +2370,7 @@
           "all": {
             "n": 400,
             "accuracy": 0.68,
-            "macro_f1": 0.3791196339781452,
+            "macro_f1": 0.37911963397814524,
             "cohen_kappa": 0.5603414223641954,
             "refusal_rate": 0.0,
             "schema_failure_rate": 0.0,
@@ -2450,8 +2466,8 @@
           "post": {
             "n": 200,
             "accuracy": 0.665,
-            "macro_f1": 0.4989716465068577,
-            "cohen_kappa": 0.5574490571022822,
+            "macro_f1": 0.4989716465068578,
+            "cohen_kappa": 0.5574490571022821,
             "refusal_rate": 0.0,
             "schema_failure_rate": 0.0,
             "mean_confidence": 0.9005999999999998,
@@ -2547,7 +2563,7 @@
             "n": 200,
             "accuracy": 0.695,
             "macro_f1": 0.2537866405143293,
-            "cohen_kappa": 0.5574097587520406,
+            "cohen_kappa": 0.5574097587520407,
             "refusal_rate": 0.0,
             "schema_failure_rate": 0.0,
             "mean_confidence": 0.9103,
@@ -2673,7 +2689,7 @@
           "all": {
             "n": 400,
             "accuracy": 0.6875,
-            "macro_f1": 0.37144317259045045,
+            "macro_f1": 0.37144317259045034,
             "cohen_kappa": 0.5621792963345651,
             "refusal_rate": 0.0,
             "schema_failure_rate": 0.0,
@@ -2865,7 +2881,7 @@
           "pre": {
             "n": 200,
             "accuracy": 0.69,
-            "macro_f1": 0.3719529787152738,
+            "macro_f1": 0.37195297871527383,
             "cohen_kappa": 0.5459871118922084,
             "refusal_rate": 0.0,
             "schema_failure_rate": 0.0,
@@ -3185,7 +3201,7 @@
             "n": 100,
             "accuracy": 0.31,
             "macro_f1": 0.3037064088793412,
-            "cohen_kappa": 0.1680733060043405,
+            "cohen_kappa": 0.16807330600434048,
             "refusal_rate": 0.0,
             "schema_failure_rate": 0.0,
             "mean_confidence": 0.8588999999999998,
@@ -3927,6 +3943,22 @@
             ],
             "new_versions": [],
             "drift_flag": false
+          },
+          "2026-W48": {
+            "n": 40,
+            "accuracy": 0.375,
+            "agreement_with_original": {
+              "estimate": 0.85,
+              "ci95": [
+                0.725,
+                0.95
+              ]
+            },
+            "versions": [
+              "openai/gpt-oss-20b"
+            ],
+            "new_versions": [],
+            "drift_flag": false
           }
         },
         "any_drift": false,
@@ -3962,8 +3994,8 @@
           "all": {
             "n": 100,
             "accuracy": 0.72,
-            "macro_f1": 0.4898203062760025,
-            "cohen_kappa": 0.6174340756934007,
+            "macro_f1": 0.48982030627600254,
+            "cohen_kappa": 0.6174340756934006,
             "refusal_rate": 0.0,
             "schema_failure_rate": 0.0,
             "mean_confidence": 0.9099999999999997,
@@ -4058,8 +4090,8 @@
           "post": {
             "n": 50,
             "accuracy": 0.68,
-            "macro_f1": 0.588477366255144,
-            "cohen_kappa": 0.5869901910170366,
+            "macro_f1": 0.5884773662551441,
+            "cohen_kappa": 0.5869901910170368,
             "refusal_rate": 0.0,
             "schema_failure_rate": 0.0,
             "mean_confidence": 0.9090000000000003,
